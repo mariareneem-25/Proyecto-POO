@@ -1,0 +1,4 @@
+bin/
+lib/
+*.db
+.vscode/
