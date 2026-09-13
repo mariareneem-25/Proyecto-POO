@@ -1,0 +1,10 @@
+//se agrega la libreria SQLite JDBC para permitir la conexión
+//entre la aplicación desarrollada en Java y la base de datos SQLite
+
+{
+    "java.project.sourcePaths": ["src"],
+    "java.project.outputPath": "bin",
+    "java.project.referencedLibraries": [
+        "lib/**/*.jar"
+    ]
+}
