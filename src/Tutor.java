@@ -37,7 +37,27 @@ public class Tutor extends Usuario {
                     );
                 }
     }
+    /*Se aprueba la solicitud y registro*/ 
+    public void aprobarSolicitud(usuario aprobador){
+        verificarPermisoValidacion(aprobador);
+        this.estadoSolicitud = EstadoSolicitud.APROBADO;
+        this.aprobadoPor = aprobador;
+    }
 
+    /*Se rechaza la solicitud y registro*/
+    public void rechazarSolicitud(Usuario aprobador){
+        verificarPermisoValidacion(aprobador);
+        this.estadoSolicitud = EstadoSolicitud.RECHAZADO;
+        this.aprobadoPor = aprobador;
+    }
+
+    /*registra calificación del tutor del 1-10. Nueva calificación cancela la anterior*/
+    public void calificarTutor(int calificacion, Usuario evaluador){
+        verificarPermisoValidacion(evaluador);
+        if (calificacion < 1 || calificacion > 10) {
+            throw new IllegalArgumentException("La calificación debe estar entre 1 y 10.");
+        }
+    }
 
     public void aprobarSolicitud(Usuario aprobador) {
         this.estadoSolicitud = EstadoSolicitud.APROBADO;
