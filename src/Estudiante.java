@@ -71,6 +71,17 @@ public double calcularProgreso() {
     return (contarLogrosCompletados() * 100.0) / logros.size();
 }
 
+public boolean completarLogro(String tema) {
+    for (Logro logro : logros) {
+        if (logro.getTema().equalsIgnoreCase(tema)) {
+            logro.marcarCompletado();
+            return true;
+        }
+    }
+
+    return false;
+}
+
     @Override
     public boolean puedeSerAnonimo() {
         return true;
