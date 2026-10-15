@@ -51,6 +51,26 @@ public class Estudiante extends Usuario {
         return !logros.isEmpty();
     }
 
+    public int contarLogrosCompletados() {
+    int completados = 0;
+
+    for (Logro logro : logros) {
+        if (logro.isCompletado()) {
+            completados++;
+        }
+    }
+
+    return completados;
+}
+
+public double calcularProgreso() {
+    if (logros.isEmpty()) {
+        return 0.0;
+    }
+
+    return (contarLogrosCompletados() * 100.0) / logros.size();
+}
+
     @Override
     public boolean puedeSerAnonimo() {
         return true;
