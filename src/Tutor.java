@@ -1,5 +1,5 @@
 import java.util.ArrayList;
-import java.util.List;
+import java.util.List; 
 
 public class Tutor extends Usuario {
 
@@ -21,11 +21,23 @@ public class Tutor extends Usuario {
         this.materiasQueDicta = new ArrayList<>();
         this.estadoSolicitud = EstadoSolicitud.PENDIENTE;
         this.aprobadoPor = null;
+        this.calificacion=null;
+        this.calificadoPor=null;
     }
 
     public boolean estaActivo() {
         return estadoSolicitud == EstadoSolicitud.APROBADO;
     }
+    /*conprueba que el usuario sea docente o directo */
+    private void verificarPermisoValidacion(Usuario usuario){
+        if (!(usuario instanceof Docente)
+                !(usuario instanceof Director)){
+                    throw new SecurityException(
+                        "Solo docentes y directores pueden validar tutores."
+                    );
+                }
+    }
+
 
     public void aprobarSolicitud(Usuario aprobador) {
         this.estadoSolicitud = EstadoSolicitud.APROBADO;
