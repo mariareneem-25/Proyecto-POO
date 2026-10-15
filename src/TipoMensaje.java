@@ -1,0 +1,4 @@
+public enum TipoMensaje {
+    TEXTO
+    // FUTURO: IMAGEN, VIDEO, ARCHIVO, LLAMADA, VIDEOLLAMADA
+}
