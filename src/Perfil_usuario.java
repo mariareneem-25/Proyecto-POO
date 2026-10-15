@@ -1,4 +1,6 @@
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
 public class Perfil_usuario {
@@ -208,6 +210,54 @@ public class Perfil_usuario {
         }
     }
 
+    private static Perfil_usuario desdeResultSet(ResultSet rs) throws SQLException {
+        return new Perfil_usuario(
+                rs.getInt("idUsuario"),
+                rs.getString("nombre"),
+                rs.getString("correoElectronico"),
+                rs.getString("contrasena"),
+                rs.getString("fotoPerfil"),
+                TipoUsuario.valueOf(rs.getString("tipoUsuario")),
+                EstadoCuenta.valueOf(rs.getString("estadoCuenta"))
+        );
+    }
+
+    public static Perfil_usuario buscarPorId(int id) {
+        String sql = "SELECT * FROM usuarios WHERE idUsuario = ?";
+        try (Connection conexion = ConexionDB.conectar();
+             PreparedStatement ps = conexion.prepareStatement(sql)) {
+
+            ps.setInt(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return desdeResultSet(rs);
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Error al buscar el usuario: " + e.getMessage());
+        }
+        return null;
+    }
+
+    public static List<Perfil_usuario> listarPorTipo(TipoUsuario tipo) {
+        List<Perfil_usuario> lista = new ArrayList<>();
+        String sql = "SELECT * FROM usuarios WHERE tipoUsuario = ? AND estadoCuenta = ?";
+        try (Connection conexion = ConexionDB.conectar();
+             PreparedStatement ps = conexion.prepareStatement(sql)) {
+
+            ps.setString(1, tipo.name());
+            ps.setString(2, EstadoCuenta.ACTIVA.name());
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    lista.add(desdeResultSet(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Error al listar usuarios: " + e.getMessage());
+        }
+        return lista;
+    }
+    
     public void cerrarSesion() {
         this.sesionActiva = false;
     }
