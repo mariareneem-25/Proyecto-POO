@@ -25,10 +25,26 @@ public class Tutor extends Usuario {
         this.calificadoPor=null;
     }
 
+    /* cada tutor tiene su propia lista de comentarios hechos por los estudiantes*/
+    private final List<Comentario> comentarios;
+    public Tutor(
+        <String idUsuario, String nombreCompleto, String correo, String contrasenaHash)
+        {
+            super(idusuario, nombreCompleto, correo, constrasenaHash);
+            this.horariosDisponibles = new ArrayList<>();
+            this.materiasQueDicta = new ArrayList<>();
+            this.estadoSolicitud = EstadoSolicitud.PENDIENTE;
+            this.aprobadoPor = null;
+            this.calificadoPor=null;
+            this.calificacion=null;
+            this.comentarios = new ArrayList<>();
+
+        }
+
     public boolean estaActivo() {
         return estadoSolicitud == EstadoSolicitud.APROBADO;
     }
-    /*conprueba que el usuario sea docente o directo */
+    /*comprueba que el usuario sea docente o directo */
     private void verificarPermisoValidacion(Usuario usuario){
         if (!(usuario instanceof Docente)
                 !(usuario instanceof Director)){
@@ -57,6 +73,34 @@ public class Tutor extends Usuario {
         if (calificacion < 1 || calificacion > 10) {
             throw new IllegalArgumentException("La calificación debe estar entre 1 y 10.");
         }
+    }
+
+    /*guardar comentario de estudiante sobre el tutor seleccionado. cada comentario será anónimo*/
+    public Comentario guardarComentario (Usuario estudiante, String contenido){
+        if (!(estudiante instanceof Estudiante)){
+            throw new IllegalArgumentException("Solo estudiantes pueden comentar");
+        }
+        Comentario comentario=new Comentario(estudiante, contenido, true);
+        this.comentarios.add(comentario);
+        return comentario;
+    }
+
+    public List<Comentario> listarComentarios() {
+        return new ArrayList<>(this.comentarios); /*con este método se devuelven los comentarios dirigidos al tutor.*/
+    }/*el obejtivo de copiar otra vez la lista es mostrar los comentarios, sin que se puedan editar de ninguna manera (eliminar o agregar)*/
+
+    public List<Comentario> buscarPorEstudiante(String idEstudiante){
+        if (idEstudiante ==null || idEstudiante.isBlank()){
+            throw new IllegalArgumentException(Proporciona el ID del estudiante.);
+        }
+        List<Comentario> encontrados=new Arraylist<>();
+        for (Comentario comentario: this.comentarios){
+            Usuario autor=comentario.getAutorReal();
+            if (idEstudiante. equals(autor.getIdUsuario())){
+                encontrados.add(comentario);
+            }
+        }
+        return encontrados;
     }
 
     public void aprobarSolicitud(Usuario aprobador) {
