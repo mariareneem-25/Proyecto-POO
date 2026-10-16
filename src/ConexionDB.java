@@ -29,12 +29,24 @@ public class ConexionDB {
                 "fotoPerfil TEXT, " +
                 "tipoUsuario TEXT NOT NULL, " +
                 "estadoCuenta TEXT NOT NULL)";
+        String sqlTutorias = "CREATE TABLE IF NOT EXISTS tutorias (" +
+                "idTutoria INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "idEstudiante INTEGER NOT NULL, " +
+                "idTutor INTEGER NOT NULL, " +
+                "materia TEXT NOT NULL, " +
+                "dia TEXT NOT NULL, " +
+                "horaInicio TEXT NOT NULL, " +
+                "horaFin TEXT NOT NULL, " +
+                "activa INTEGER NOT NULL DEFAULT 1, " +
+                "FOREIGN KEY (idEstudiante) REFERENCES usuarios(idUsuario), " +
+                "FOREIGN KEY (idTutor) REFERENCES usuarios(idUsuario))";
  
         try (Connection conexion = conectar();
              Statement st = conexion.createStatement()) {
  
             st.execute(sqlCorreos);
             st.execute(sqlUsuarios);
+            st.execute(sqlTutorias);
  
         } catch (SQLException e) {
             System.out.println("Error al crear las tablas: " + e.getMessage());
