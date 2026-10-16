@@ -1,5 +1,7 @@
 import java.sql.*;
 import java.util.Scanner;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Perfil_usuario {
 
@@ -287,6 +289,46 @@ public class Perfil_usuario {
             return false;
         }
     }
+
+    public static List<Perfil_usuario> obtenerTutores() {
+
+    List<Perfil_usuario> tutores = new ArrayList<>();
+
+    String sql = "SELECT * FROM usuarios "
+            + "WHERE tipoUsuario = ? AND estadoCuenta = ?";
+
+    try (Connection conexion = ConexionDB.conectar();
+         PreparedStatement ps = conexion.prepareStatement(sql)) {
+
+        ps.setString(1, TipoUsuario.TUTOR.name());
+        ps.setString(2, EstadoCuenta.ACTIVA.name());
+
+        try (ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+
+                Perfil_usuario tutor = new Perfil_usuario(
+                        rs.getInt("idUsuario"),
+                        rs.getString("nombre"),
+                        rs.getString("correoElectronico"),
+                        rs.getString("contrasena"),
+                        rs.getString("fotoPerfil"),
+                        TipoUsuario.valueOf(rs.getString("tipoUsuario")),
+                        EstadoCuenta.valueOf(rs.getString("estadoCuenta"))
+                );
+
+                tutores.add(tutor);
+            }
+        }
+
+    } catch (SQLException e) {
+        System.out.println(
+                "Error al obtener los tutores: " + e.getMessage()
+        );
+    }
+
+    return tutores;
+}
 
     @Override
     public String toString() {
