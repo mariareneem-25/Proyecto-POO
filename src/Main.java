@@ -101,10 +101,17 @@ public class Main {
         }
 
         Perfil_usuario usuario = Perfil_usuario.crearUsuario(nombre, correo, contrasena, fotoPerfil);
-
         if (usuario != null) {
             System.out.println("Cuenta creada correctamente:");
+            
+        if (usuario.getTipoUsuario() == Perfil_usuario.TipoUsuario.TUTOR) {
+            System.out.println("Nombre: " + usuario.getNombre());
+            System.out.println("Correo: " + usuario.getCorreoElectronico());
+            System.out.println("Tipo de usuario: TUTOR");
+            System.out.println("Estado de solicitud: PENDIENTE");
+        } else {
             System.out.println(usuario);
+        }
         } else {
             System.out.println("No se pudo guardar la cuenta en la base de datos.");
         }
