@@ -146,12 +146,24 @@ public class Main {
 
         Usuario usuarioForo = AdaptadorUsuario.convertir(sesion);
 
+        Estudiante estudianteActual = null;
+
+        if (usuarioForo instanceof Estudiante) {
+            estudianteActual = (Estudiante) usuarioForo;
+        }
+
+        
         int subopcion = -1;
-        while (subopcion != 4) {
+        while (subopcion != 5) {
             System.out.println("\n1. Actualizar perfil");
             System.out.println("2. Eliminar perfil");
             System.out.println("3. Foro académico");
-            System.out.println("4. Cerrar sesión");
+
+            if (estudianteActual != null) {
+                System.out.println("4. Seguimiento del progreso");
+            }
+
+            System.out.println("5. Cerrar sesión");
             System.out.print("Selecciona una opción: ");
 
             if (sc.hasNextInt()) {
@@ -170,9 +182,11 @@ public class Main {
                 } else {
                     System.out.println("No se pudo eliminar el perfil.");
                 }
-                subopcion = 4;
-            } else if (subopcion == 3) {
+                subopcion = 5;
+           } else if (subopcion == 3) {
                 menuForo(usuarioForo);
+            } else if (subopcion == 4 && estudianteActual != null) {
+                menuProgreso(estudianteActual);
             }
         }
 
@@ -260,6 +274,78 @@ public class Main {
             System.out.println("Publicación creada correctamente.");
         } catch (IllegalArgumentException | IllegalStateException e) {
             System.out.println("No se pudo crear la publicación: " + e.getMessage());
+        }
+    }
+        private static void menuProgreso(Estudiante estudiante) {
+
+        int opcion = -1;
+
+        while (opcion != 5) {
+
+            System.out.println("\n--- Seguimiento del progreso ---");
+            System.out.println("1. Ver logros");
+            System.out.println("2. Agregar logro");
+            System.out.println("3. Completar logro");
+            System.out.println("4. Ver porcentaje de progreso");
+            System.out.println("5. Volver");
+            System.out.print("Selecciona una opción: ");
+
+            if (sc.hasNextInt()) {
+                opcion = sc.nextInt();
+            } else {
+                sc.next();
+                continue;
+            }
+
+            sc.nextLine();
+
+            if (opcion == 1) {
+
+                if (!estudiante.tieneLogros()) {
+                    System.out.println("Todavía no tienes logros registrados.");
+                } else {
+                    for (Logro logro : estudiante.getLogros()) {
+                        System.out.println(logro);
+                    }
+                }
+
+            } else if (opcion == 2) {
+
+                System.out.print("Tema o materia del nuevo logro: ");
+                String tema = sc.nextLine();
+
+                if (tema.trim().isEmpty()) {
+                    System.out.println("El tema no puede estar vacío.");
+                } else {
+                    estudiante.agregarLogro(new Logro(tema));
+                    System.out.println("Logro agregado correctamente.");
+                }
+
+            } else if (opcion == 3) {
+
+                System.out.print("Tema del logro completado: ");
+                String tema = sc.nextLine();
+
+                if (estudiante.completarLogro(tema)) {
+                    System.out.println("Logro marcado como completado.");
+                } else {
+                    System.out.println("No se encontró ese logro.");
+                }
+
+            } else if (opcion == 4) {
+
+                System.out.println(
+                        "Logros completados: "
+                        + estudiante.contarLogrosCompletados()
+                        + " de "
+                        + estudiante.getLogros().size()
+                );
+
+                System.out.printf(
+                        "Progreso: %.2f%%%n",
+                        estudiante.calcularProgreso()
+                );
+            }
         }
     }
 }
