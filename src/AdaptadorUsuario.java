@@ -19,12 +19,15 @@ public class AdaptadorUsuario {
                 );
 
             case TUTOR:
-                return new Tutor(
+                Tutor tutor = new Tutor(
                         idComoTexto,
                         perfil.getNombre(),
                         perfil.getCorreoElectronico(),
                         ""
                 );
+
+                tutor.cargarDatosTutor();
+                return tutor;
 
             default:
                 return null;
