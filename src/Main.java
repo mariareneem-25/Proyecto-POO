@@ -1,11 +1,14 @@
 import java.util.List;
 import java.util.Scanner;
+import java.time.DayOfWeek;
+import java.time.LocalTime;
 
 public class Main {
 
     private static final Scanner sc = new Scanner(System.in);
     private static final Foro foro = new Foro();
-
+    private static final AgendaTutorias agendaTutorias = new AgendaTutorias();
+    
     public static void main(String[] args) {
         ConexionDB.crearTablas();
         Perfil_usuario.registrarCorreo("estudiante1@uvg.edu.gt", "estudiante");
@@ -154,16 +157,18 @@ public class Main {
 
         
         int subopcion = -1;
-        while (subopcion != 5) {
+            while (subopcion != 7) {
             System.out.println("\n1. Actualizar perfil");
             System.out.println("2. Eliminar perfil");
             System.out.println("3. Foro académico");
 
             if (estudianteActual != null) {
                 System.out.println("4. Seguimiento del progreso");
+                System.out.println("5. Agendar tutoría");
+                System.out.println("6. Ver mis tutorías");
             }
 
-            System.out.println("5. Cerrar sesión");
+            System.out.println("7. Cerrar sesión");
             System.out.print("Selecciona una opción: ");
 
             if (sc.hasNextInt()) {
@@ -182,11 +187,15 @@ public class Main {
                 } else {
                     System.out.println("No se pudo eliminar el perfil.");
                 }
-                subopcion = 5;
-           } else if (subopcion == 3) {
+                subopcion = 7;
+            } else if (subopcion == 3) {
                 menuForo(usuarioForo);
             } else if (subopcion == 4 && estudianteActual != null) {
                 menuProgreso(estudianteActual);
+            } else if (subopcion == 5 && estudianteActual != null) {
+                menuAgendarTutoria(estudianteActual);
+            } else if (subopcion == 6 && estudianteActual != null) {
+                verTutoriasEstudiante(estudianteActual);
             }
         }
 
@@ -346,6 +355,106 @@ public class Main {
                         estudiante.calcularProgreso()
                 );
             }
+        }
+    }
+    private static void menuAgendarTutoria(Estudiante estudiante) {
+        
+        List<Perfil_usuario> perfilesTutores = Perfil_usuario.obtenerTutores();
+        
+         if (perfilesTutores.isEmpty()) {
+             System.out.println("No hay tutores registrados disponibles.");
+             return;
+        }
+        System.out.println("\n--- Tutores registrados ---");
+
+         for (int i = 0; i < perfilesTutores.size(); i++) {
+             System.out.println(
+                 (i + 1) + ". " + perfilesTutores.get(i).getNombre()
+            );
+        }
+        
+        System.out.print("Selecciona un tutor: ");
+            if (!sc.hasNextInt()) {
+            sc.next();
+            sc.nextLine();
+            System.out.println("Opción inválida.");
+            return;
+        }
+        int opcionTutor = sc.nextInt();
+        sc.nextLine();
+
+        if (opcionTutor < 1 || opcionTutor > perfilesTutores.size()) {
+            System.out.println("Tutor inválido.");
+            return;
+        }
+
+        Perfil_usuario perfilTutor =
+                perfilesTutores.get(opcionTutor - 1);
+
+        Usuario usuarioTutor =
+                AdaptadorUsuario.convertir(perfilTutor);
+
+        if (!(usuarioTutor instanceof Tutor)) {
+            System.out.println("No se pudo cargar el tutor.");
+            return;
+        }
+         Tutor tutor = (Tutor) usuarioTutor;
+        
+        System.out.print("Materia de la tutoría: ");
+        String materia = sc.nextLine();
+        
+        System.out.print(
+            "Día de la tutoría (MONDAY, TUESDAY, WEDNESDAY, etc.): "
+        );
+
+        String diaTexto = sc.nextLine().toUpperCase();
+        
+        System.out.print("Hora de inicio (HH:MM): ");
+        String inicioTexto = sc.nextLine();
+        
+        System.out.print("Hora de fin (HH:MM): ");
+        String finTexto = sc.nextLine();
+
+         try {
+             DayOfWeek dia = DayOfWeek.valueOf(diaTexto);
+             LocalTime horaInicio = LocalTime.parse(inicioTexto);
+             LocalTime horaFin = LocalTime.parse(finTexto);
+             
+             Horario horario = new Horario(
+                 dia,
+                 horaInicio,
+                 horaFin
+             );
+             Tutoria tutoria = agendaTutorias.agendarTutoria(
+                 estudiante,
+                 tutor,
+                 materia,
+                 horario
+             );
+
+              System.out.println("Tutoría agendada correctamente.");
+             System.out.println(tutoria);
+         
+         } catch (IllegalArgumentException | IllegalStateException e) {
+             System.out.println(
+                 "No se pudo agendar la tutoría: " + e.getMessage()
+             );
+         }
+       }
+    private static void verTutoriasEstudiante(Estudiante estudiante) {
+        
+        List<Tutoria> tutorias =
+            agendaTutorias.obtenerTutoriasEstudiante(estudiante);
+        
+        if (tutorias.isEmpty()) {
+            System.out.println("No tienes tutorías agendadas.");
+            return;
+        }
+        
+        System.out.println("\n--- Mis tutorías ---");
+        
+        for (Tutoria tutoria : tutorias) {
+            System.out.println(tutoria);
         }
     }
 }
