@@ -40,6 +40,25 @@ public class ConexionDB {
                 "activa INTEGER NOT NULL DEFAULT 1, " +
                 "FOREIGN KEY (idEstudiante) REFERENCES usuarios(idUsuario), " +
                 "FOREIGN KEY (idTutor) REFERENCES usuarios(idUsuario))";
+     
+       String sqlTutores = "CREATE TABLE IF NOT EXISTS tutores (" +
+                "idTutor INTEGER PRIMARY KEY, " +
+                "estadoSolicitud TEXT NOT NULL, " +
+                "FOREIGN KEY (idTutor) REFERENCES usuarios(idUsuario))";
+
+       String sqlMateriasTutor = "CREATE TABLE IF NOT EXISTS materias_tutor (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "idTutor INTEGER NOT NULL, " +
+                "materia TEXT NOT NULL, " +
+                "FOREIGN KEY (idTutor) REFERENCES usuarios(idUsuario))";
+
+       String sqlHorariosTutor = "CREATE TABLE IF NOT EXISTS horarios_tutor (" +
+               "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+               "idTutor INTEGER NOT NULL, " +
+               "dia TEXT NOT NULL, " +
+               "horaInicio TEXT NOT NULL, " +
+               "horaFin TEXT NOT NULL, " +
+               "FOREIGN KEY (idTutor) REFERENCES usuarios(idUsuario))";
  
         try (Connection conexion = conectar();
              Statement st = conexion.createStatement()) {
@@ -47,6 +66,9 @@ public class ConexionDB {
             st.execute(sqlCorreos);
             st.execute(sqlUsuarios);
             st.execute(sqlTutorias);
+            st.execute(sqlTutores);
+            st.execute(sqlMateriasTutor);
+            st.execute(sqlHorariosTutor);
  
         } catch (SQLException e) {
             System.out.println("Error al crear las tablas: " + e.getMessage());
