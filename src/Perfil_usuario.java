@@ -6,7 +6,7 @@ import java.util.Scanner;
 public class Perfil_usuario {
 
     public enum TipoUsuario {
-        ESTUDIANTE, TUTOR, DIRECTOR
+        ESTUDIANTE, TUTOR, DIRECTOR, DOCENTE
     }
 
     public enum EstadoCuenta {
@@ -68,7 +68,7 @@ public class Perfil_usuario {
 
         String sqlAutorizado = "SELECT 1 FROM correos_autorizados WHERE correo = ?";
         String sqlYaUsado = "SELECT 1 FROM usuarios WHERE correoElectronico = ?";
-
+        
         try (Connection conexion = ConexionDB.conectar()) {
 
             try (PreparedStatement ps = conexion.prepareStatement(sqlAutorizado)) {
@@ -151,6 +151,9 @@ public class Perfil_usuario {
             case "director":
                 tipo = TipoUsuario.DIRECTOR;
                 break;
+            case "docente":
+                tipo = TipoUsuario.DOCENTE;
+                break;
             default:
                 rechazarRegistro();
                 return null;
@@ -209,6 +212,10 @@ public class Perfil_usuario {
             return null;
         }
     }
+    
+    // ---------------------------------------------------------------
+    // Consultas usadas por el chat y la validación de tutores
+    // ---------------------------------------------------------------
 
     private static Perfil_usuario desdeResultSet(ResultSet rs) throws SQLException {
         return new Perfil_usuario(
@@ -257,7 +264,67 @@ public class Perfil_usuario {
         }
         return lista;
     }
-    
+
+    public static List<Perfil_usuario> listarTutoresPendientes() {
+        List<Perfil_usuario> lista = new ArrayList<>();
+        String sql = "SELECT u.* FROM usuarios u "
+                + "LEFT JOIN solicitudes_tutor s ON s.idTutor = u.idUsuario "
+                + "WHERE u.tipoUsuario = ? AND u.estadoCuenta = ? "
+                + "AND (s.estado IS NULL OR s.estado = ?)";
+        try (Connection conexion = ConexionDB.conectar();
+             PreparedStatement ps = conexion.prepareStatement(sql)) {
+
+            ps.setString(1, TipoUsuario.TUTOR.name());
+            ps.setString(2, EstadoCuenta.ACTIVA.name());
+            ps.setString(3, EstadoSolicitud.PENDIENTE.name());
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    lista.add(desdeResultSet(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Error al listar solicitudes de tutor: " + e.getMessage());
+        }
+        return lista;
+    }
+
+    // si el tutor no tiene registro todavía, su solicitud está PENDIENTE
+    public static EstadoSolicitud obtenerEstadoSolicitudTutor(int idTutor) {
+        String sql = "SELECT estado FROM solicitudes_tutor WHERE idTutor = ?";
+        try (Connection conexion = ConexionDB.conectar();
+             PreparedStatement ps = conexion.prepareStatement(sql)) {
+
+            ps.setInt(1, idTutor);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return EstadoSolicitud.valueOf(rs.getString("estado"));
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Error al obtener el estado de la solicitud: " + e.getMessage());
+        }
+        return EstadoSolicitud.PENDIENTE;
+    }
+
+    public static boolean guardarEstadoSolicitudTutor(int idTutor, EstadoSolicitud estado, int idAprobador) {
+        String sql = "INSERT OR REPLACE INTO solicitudes_tutor (idTutor, estado, aprobadoPor) VALUES (?, ?, ?)";
+        try (Connection conexion = ConexionDB.conectar();
+             PreparedStatement ps = conexion.prepareStatement(sql)) {
+
+            ps.setInt(1, idTutor);
+            ps.setString(2, estado.name());
+            ps.setInt(3, idAprobador);
+            ps.executeUpdate();
+            return true;
+
+        } catch (SQLException e) {
+            System.out.println("Error al guardar la solicitud: " + e.getMessage());
+            return false;
+        }
+    }
+
+    // ---------------------------------------------------------------
+
     public void cerrarSesion() {
         this.sesionActiva = false;
     }

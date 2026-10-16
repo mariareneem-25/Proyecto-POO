@@ -29,12 +29,18 @@ public class ConexionDB {
                 "fotoPerfil TEXT, " +
                 "tipoUsuario TEXT NOT NULL, " +
                 "estadoCuenta TEXT NOT NULL)";
+
+        String sqlSolicitudesTutor = "CREATE TABLE IF NOT EXISTS solicitudes_tutor (" +
+                "idTutor INTEGER PRIMARY KEY, " +
+                "estado TEXT NOT NULL, " +
+                "aprobadoPor INTEGER)";
  
         try (Connection conexion = conectar();
              Statement st = conexion.createStatement()) {
  
             st.execute(sqlCorreos);
             st.execute(sqlUsuarios);
+            st.execute(sqlSolicitudesTutor);
  
         } catch (SQLException e) {
             System.out.println("Error al crear las tablas: " + e.getMessage());

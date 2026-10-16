@@ -33,6 +33,7 @@ public class Main {
         ConexionDB.crearTablas();
         Perfil_usuario.registrarCorreo("estudiante1@uvg.edu.gt", "estudiante");
         Perfil_usuario.registrarCorreo("director1@uvg.edu.gt", "director");
+        Perfil_usuario.registrarCorreo("docente1@uvg.edu.gt", "docente");
 
         iniciarMenu();
     }
@@ -82,7 +83,7 @@ public class Main {
         System.out.print("Correo a autorizar: ");
         String correo = sc.nextLine();
 
-        System.out.println("Tipo de usuario (estudiante / director): ");
+        System.out.println("Tipo de usuario (estudiante / docente / director): ");
         String tipo = sc.nextLine();
 
         if (Perfil_usuario.registrarCorreo(correo, tipo)) {
@@ -124,6 +125,9 @@ public class Main {
                 break;
             case "director":
                 tipo = Perfil_usuario.TipoUsuario.DIRECTOR;
+                break;
+            case "docente":
+                tipo = Perfil_usuario.TipoUsuario.DOCENTE;
                 break;
             default:
                 System.out.println("Registro rechazado: tipo de usuario no reconocido.");
@@ -180,13 +184,25 @@ public class Main {
         // se convierte la sesión a un Usuario real (Estudiante/Tutor) una sola vez
         Usuario usuarioActual = AdaptadorUsuario.convertir(sesion);
 
+        if (usuarioActual instanceof Tutor) {
+            System.out.println("Estado de tu solicitud de tutor: " + ((Tutor) usuarioActual).getEstadoSolicitud());
+        }
+
+        // docentes y directores pueden validar las solicitudes de tutor
+        boolean puedeValidar = sesion.getTipoUsuario() == Perfil_usuario.TipoUsuario.DOCENTE
+                || sesion.getTipoUsuario() == Perfil_usuario.TipoUsuario.DIRECTOR;
+        int opcionSalir = puedeValidar ? 6 : 5;
+
         int subopcion = -1;
-        while (subopcion != 5) {
+        while (subopcion != opcionSalir) {
             System.out.println("\n1. Actualizar perfil");
             System.out.println("2. Eliminar perfil");
             System.out.println("3. Foro académico");
             System.out.println("4. Chat");
-            System.out.println("5. Cerrar sesión");
+            if (puedeValidar) {
+                System.out.println("5. Validar solicitudes de tutor");
+            }
+            System.out.println(opcionSalir + ". Cerrar sesión");
             System.out.print("Selecciona una opción: ");
 
             if (sc.hasNextInt()) {
@@ -205,11 +221,13 @@ public class Main {
                 } else {
                     System.out.println("No se pudo eliminar el perfil.");
                 }
-                subopcion = 5;
+                subopcion = opcionSalir;
             } else if (subopcion == 3) {
                 menuForo(usuarioActual);
             } else if (subopcion == 4) {
                 menuChat(usuarioActual);
+            } else if (puedeValidar && subopcion == 5) {
+                validarSolicitudesTutor(sesion);
             }
         }
 
@@ -228,6 +246,53 @@ public class Main {
             System.out.println("Perfil actualizado.");
         } else {
             System.out.println("No se pudo actualizar el perfil.");
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // Validación de solicitudes de tutor (docentes y directores)
+    // ---------------------------------------------------------------
+
+    private static void validarSolicitudesTutor(Perfil_usuario validador) {
+        List<Perfil_usuario> pendientes = Perfil_usuario.listarTutoresPendientes();
+
+        if (pendientes.isEmpty()) {
+            System.out.println("No hay solicitudes de tutor pendientes.");
+            return;
+        }
+
+        System.out.println("\nSolicitudes de tutor pendientes:");
+        for (int i = 0; i < pendientes.size(); i++) {
+            Perfil_usuario p = pendientes.get(i);
+            System.out.println((i + 1) + ". " + p.getNombre() + " <" + p.getCorreoElectronico() + ">");
+        }
+
+        int eleccion = leerEntero("Selecciona una solicitud (0 para volver): ");
+        if (eleccion < 1 || eleccion > pendientes.size()) {
+            return;
+        }
+
+        Perfil_usuario tutor = pendientes.get(eleccion - 1);
+
+        System.out.println("\n1. Aprobar");
+        System.out.println("2. Rechazar");
+        System.out.println("3. Cancelar");
+        int decision = leerEntero("Selecciona una opción: ");
+
+        if (decision == 1) {
+            if (Perfil_usuario.guardarEstadoSolicitudTutor(
+                    tutor.getIdUsuario(), EstadoSolicitud.APROBADO, validador.getIdUsuario())) {
+                System.out.println("Solicitud aprobada.");
+            } else {
+                System.out.println("No se pudo guardar la decisión.");
+            }
+        } else if (decision == 2) {
+            if (Perfil_usuario.guardarEstadoSolicitudTutor(
+                    tutor.getIdUsuario(), EstadoSolicitud.RECHAZADO, validador.getIdUsuario())) {
+                System.out.println("Solicitud rechazada.");
+            } else {
+                System.out.println("No se pudo guardar la decisión.");
+            }
         }
     }
 
@@ -401,12 +466,13 @@ public class Main {
     private static void abrirConversacion(Conversacion conversacion, Usuario usuario) {
         int opcion = -1;
 
-        while (opcion != 3) {
+        while (opcion != 4) {
             mostrarMensajes(conversacion, usuario);
 
             System.out.println("\n1. Enviar mensaje");
-            System.out.println("2. Actualizar");
-            System.out.println("3. Volver");
+            System.out.println("2. Enviar imagen o archivo");
+            System.out.println("3. Actualizar");
+            System.out.println("4. Volver");
             opcion = leerEntero("Selecciona una opción: ");
 
             try {
@@ -414,6 +480,13 @@ public class Main {
                     System.out.print("Mensaje: ");
                     servicioChat.enviarTexto(conversacion, usuario, sc.nextLine());
                 } else if (opcion == 2) {
+                    System.out.print("Ruta del archivo: ");
+                    String ruta = sc.nextLine();
+                    System.out.print("Descripción (opcional): ");
+                    String descripcion = sc.nextLine();
+                    servicioChat.enviarArchivo(conversacion, usuario, ruta, descripcion);
+                    System.out.println("Archivo enviado.");
+                } else if (opcion == 3) {
                     conversacion = servicioChat.recargar(conversacion);
                 }
             } catch (RuntimeException e) {
@@ -435,7 +508,18 @@ public class Main {
         for (Mensaje m : mensajes) {
             boolean esMio = m.getRemitente().getIdUsuario().equals(usuario.getIdUsuario());
             String autor = esMio ? "Tú" : m.getRemitente().getNombreCompleto();
-            System.out.println("[" + m.getFecha().format(FORMATO_FECHA) + "] " + autor + ": " + m.getContenido());
+
+            String linea = "[" + m.getFecha().format(FORMATO_FECHA) + "] " + autor + ": ";
+            if (m.tieneArchivo()) {
+                linea += "[" + m.getTipo() + "] " + GestorArchivos.nombreOriginal(m.getRutaArchivo())
+                        + " (" + m.getRutaArchivo() + ")";
+                if (!m.getContenido().isBlank()) {
+                    linea += " - " + m.getContenido();
+                }
+            } else {
+                linea += m.getContenido();
+            }
+            System.out.println(linea);
         }
     }
 }

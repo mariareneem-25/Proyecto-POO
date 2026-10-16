@@ -7,7 +7,7 @@ public class Mensaje {
     private final Usuario remitente;
     private final TipoMensaje tipo;
     private final String contenido;
-    private final String rutaArchivo; // FUTURO: archivos adjuntos (por ahora siempre null)
+    private final String rutaArchivo;
     private final LocalDateTime fecha;
 
     // mensaje de texto nuevo
@@ -24,6 +24,27 @@ public class Mensaje {
         this.tipo = TipoMensaje.TEXTO;
         this.contenido = contenido;
         this.rutaArchivo = null;
+        this.fecha = LocalDateTime.now();
+    }
+
+    // mensaje nuevo con archivo adjunto (imagen, video u otro archivo)
+    // descripcion es opcional (puede ir vacía)
+    public Mensaje(Usuario remitente, TipoMensaje tipo, String descripcion, String rutaArchivo) {
+        if (remitente == null) {
+            throw new IllegalArgumentException("El mensaje necesita un remitente");
+        }
+        if (tipo == null || tipo == TipoMensaje.TEXTO) {
+            throw new IllegalArgumentException("El tipo debe ser IMAGEN, VIDEO o ARCHIVO");
+        }
+        if (rutaArchivo == null || rutaArchivo.isBlank()) {
+            throw new IllegalArgumentException("El archivo es obligatorio");
+        }
+
+        this.id = UUID.randomUUID().toString();
+        this.remitente = remitente;
+        this.tipo = tipo;
+        this.contenido = (descripcion == null) ? "" : descripcion;
+        this.rutaArchivo = rutaArchivo;
         this.fecha = LocalDateTime.now();
     }
 
@@ -56,6 +77,10 @@ public class Mensaje {
 
     public String getRutaArchivo() {
         return rutaArchivo;
+    }
+
+    public boolean tieneArchivo() {
+        return rutaArchivo != null && !rutaArchivo.isBlank();
     }
 
     public LocalDateTime getFecha() {

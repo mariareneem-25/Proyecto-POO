@@ -45,7 +45,25 @@ public class ServicioChat {
         return mensaje;
     }
 
-    // FUTURO: enviarArchivo(...) para imágenes y archivos
+    // enviarArchivo(...) para imágenes y archivos
+
+        // descripcion es opcional (puede ir vacía)
+    public Mensaje enviarArchivo(Conversacion conversacion, Usuario remitente,
+                                 String rutaOrigen, String descripcion) {
+        validarPuedeEnviar(conversacion, remitente);
+
+        String rutaGuardada = GestorArchivos.guardar(rutaOrigen, GestorArchivos.Categoria.CHAT);
+
+        TipoMensaje tipo = GestorArchivos.esImagen(rutaGuardada) ? TipoMensaje.IMAGEN
+                : GestorArchivos.esVideo(rutaGuardada) ? TipoMensaje.VIDEO
+                : TipoMensaje.ARCHIVO;
+
+        Mensaje mensaje = new Mensaje(remitente, tipo, descripcion, rutaGuardada);
+        chatDAO.guardarMensaje(mensaje, conversacion.getId());
+        conversacion.agregarMensaje(mensaje);
+        return mensaje;
+    }
+
     // FUTURO: llamadas y videollamadas
 
     // ---------------------------------------------------------------
