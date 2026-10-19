@@ -5,6 +5,11 @@ public class Main {
 
     private static final Scanner sc = new Scanner(System.in);
     private static final Foro foro = new Foro();
+    private static final Controlaracceso acceso = new Controlaracceso();
+    private static final Gestionarsolicitudes solicitudes = new Gestionarsolicitudes();
+    private static final HabilitarChat chat = new HabilitarChat();
+    private static final GestionarCalendario calendario = new GestionarCalendario();
+    private static final RepositorioLogros logros = new RepositorioLogros();
 
     public static void main(String[] args) {
         ConexionDB.crearTablas();
@@ -147,11 +152,14 @@ public class Main {
         Usuario usuarioForo = AdaptadorUsuario.convertir(sesion);
 
         int subopcion = -1;
-        while (subopcion != 4) {
+        while (subopcion != 7) {
             System.out.println("\n1. Actualizar perfil");
             System.out.println("2. Eliminar perfil");
             System.out.println("3. Foro académico");
-            System.out.println("4. Cerrar sesión");
+            System.out.println("4. Solicitudes de tutoría");
+            System.out.println("5. Chat privado");
+            System.out.println("6. Calendario");
+            System.out.println("7. Cerrar sesión");
             System.out.print("Selecciona una opción: ");
 
             if (sc.hasNextInt()) {
@@ -170,9 +178,15 @@ public class Main {
                 } else {
                     System.out.println("No se pudo eliminar el perfil.");
                 }
-                subopcion = 4;
+                subopcion = 7;
             } else if (subopcion == 3) {
                 menuForo(usuarioForo);
+            } else if (subopcion == 4) {
+                menuSolicitudes(sesion);
+            } else if (subopcion == 5) {
+                menuChat(sesion);
+            } else if (subopcion == 6) {
+                verCalendario(sesion);
             }
         }
 
@@ -260,6 +274,352 @@ public class Main {
             System.out.println("Publicación creada correctamente.");
         } catch (IllegalArgumentException | IllegalStateException e) {
             System.out.println("No se pudo crear la publicación: " + e.getMessage());
+        }
+    }
+
+    private static int leerEntero(String mensaje) {
+        System.out.print(mensaje);
+        try {
+            return Integer.parseInt(sc.nextLine().trim());
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+    }
+
+    private static String leerTexto(String mensaje) {
+        System.out.print(mensaje);
+        return sc.nextLine();
+    }
+
+    private static void menuSolicitudes(Perfil_usuario sesion) {
+        if (acceso.puedeEnviarSolicitud(sesion)) {
+            menuSolicitudesEstudiante(sesion);
+        } else if (acceso.puedeGestionarSolicitudes(sesion)) {
+            menuSolicitudesTutor(sesion);
+        } else {
+            System.out.println("Tu tipo de cuenta no tiene acceso a las solicitudes de tutoría.");
+        }
+    }
+
+    private static void menuSolicitudesEstudiante(Perfil_usuario sesion) {
+        int opcion = -1;
+
+        while (opcion != 7) {
+            System.out.println("\n--- Solicitudes de tutoría (estudiante) ---");
+            System.out.println("1. Ver tutores disponibles");
+            System.out.println("2. Enviar solicitud a un tutor");
+            System.out.println("3. Ver mis solicitudes");
+            System.out.println("4. Ver mis logros");
+            System.out.println("5. Agregar logro");
+            System.out.println("6. Completar logro");
+            System.out.println("7. Volver");
+            opcion = leerEntero("Selecciona una opción: ");
+
+            if (opcion == 1) {
+                verTutores(sesion);
+            } else if (opcion == 2) {
+                enviarSolicitud(sesion);
+            } else if (opcion == 3) {
+                verMisSolicitudes(sesion);
+            } else if (opcion == 4) {
+                verMisLogros(sesion);
+            } else if (opcion == 5) {
+                agregarLogro(sesion);
+            } else if (opcion == 6) {
+                completarLogro(sesion);
+            }
+        }
+    }
+
+    private static void verTutores(Perfil_usuario sesion) {
+        try {
+            List<String> tutores = solicitudes.listarTutores(sesion);
+
+            if (tutores.isEmpty()) {
+                System.out.println("Todavía no hay tutores registrados.");
+            }
+
+            for (String tutor : tutores) {
+                System.out.println(tutor);
+            }
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    private static void enviarSolicitud(Perfil_usuario sesion) {
+        int idTutor = leerEntero("Id del tutor: ");
+        String materia = leerTexto("Materia: ");
+        String mensaje = leerTexto("Mensaje para el tutor: ");
+
+        try {
+            int idSolicitud = solicitudes.crearSolicitud(sesion, idTutor, materia, mensaje);
+            System.out.println("Solicitud enviada. Número de solicitud: " + idSolicitud);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            System.out.println("No se pudo enviar la solicitud: " + e.getMessage());
+        }
+    }
+
+    private static void verMisSolicitudes(Perfil_usuario sesion) {
+        try {
+            List<Solicitud> lista = solicitudes.listarMisSolicitudes(sesion);
+
+            if (lista.isEmpty()) {
+                System.out.println("No has enviado solicitudes.");
+            }
+
+            for (Solicitud solicitud : lista) {
+                System.out.println(solicitud);
+            }
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    private static void verMisLogros(Perfil_usuario sesion) {
+        try {
+            List<Logro> lista = logros.obtenerLogros(sesion, sesion.getIdUsuario());
+
+            if (lista.isEmpty()) {
+                System.out.println("No tienes logros registrados.");
+            }
+
+            for (Logro logro : lista) {
+                System.out.println(logro);
+            }
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    private static void agregarLogro(Perfil_usuario sesion) {
+        String tema = leerTexto("Tema del logro: ");
+
+        try {
+            logros.agregarLogro(sesion, tema);
+            System.out.println("Logro agregado.");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            System.out.println("No se pudo agregar el logro: " + e.getMessage());
+        }
+    }
+
+    private static void completarLogro(Perfil_usuario sesion) {
+        String tema = leerTexto("Tema del logro a completar: ");
+
+        try {
+            logros.completarLogro(sesion, tema);
+            System.out.println("Logro marcado como completado.");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            System.out.println("No se pudo completar el logro: " + e.getMessage());
+        }
+    }
+
+    private static void menuSolicitudesTutor(Perfil_usuario sesion) {
+        int opcion = -1;
+
+        while (opcion != 5) {
+            System.out.println("\n--- Solicitudes de tutoría (tutor) ---");
+            System.out.println("1. Ver solicitudes pendientes");
+            System.out.println("2. Consultar una solicitud");
+            System.out.println("3. Aceptar una solicitud");
+            System.out.println("4. Rechazar una solicitud");
+            System.out.println("5. Volver");
+            opcion = leerEntero("Selecciona una opción: ");
+
+            if (opcion == 1) {
+                verSolicitudesPendientes(sesion);
+            } else if (opcion == 2) {
+                consultarSolicitud(sesion);
+            } else if (opcion == 3) {
+                aceptarSolicitud(sesion);
+            } else if (opcion == 4) {
+                rechazarSolicitud(sesion);
+            }
+        }
+    }
+
+    private static void verSolicitudesPendientes(Perfil_usuario sesion) {
+        try {
+            List<Solicitud> lista = solicitudes.listarPendientes(sesion);
+
+            if (lista.isEmpty()) {
+                System.out.println("No tienes solicitudes pendientes.");
+            }
+
+            for (Solicitud solicitud : lista) {
+                System.out.println(solicitud);
+            }
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    private static void consultarSolicitud(Perfil_usuario sesion) {
+        int idSolicitud = leerEntero("Número de solicitud: ");
+
+        try {
+            System.out.println(solicitudes.consultarSolicitud(sesion, idSolicitud));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    private static void aceptarSolicitud(Perfil_usuario sesion) {
+        int idSolicitud = leerEntero("Número de solicitud a aceptar: ");
+
+        try {
+            solicitudes.aceptarSolicitud(sesion, idSolicitud);
+            System.out.println("Solicitud aceptada. El chat privado ya está habilitado.");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            System.out.println("No se pudo aceptar la solicitud: " + e.getMessage());
+        }
+    }
+
+    private static void rechazarSolicitud(Perfil_usuario sesion) {
+        int idSolicitud = leerEntero("Número de solicitud a rechazar: ");
+        String motivo = leerTexto("Motivo del rechazo: ");
+
+        try {
+            solicitudes.rechazarSolicitud(sesion, idSolicitud, motivo);
+            System.out.println("Solicitud rechazada.");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            System.out.println("No se pudo rechazar la solicitud: " + e.getMessage());
+        }
+    }
+
+    private static void menuChat(Perfil_usuario sesion) {
+        if (!acceso.puedeUsarChat(sesion)) {
+            System.out.println("Tu tipo de cuenta no puede usar el chat privado.");
+            return;
+        }
+
+        int opcion = -1;
+
+        while (opcion != 6) {
+            System.out.println("\n--- Chat privado ---");
+            System.out.println("1. Ver mis chats");
+            System.out.println("2. Ver mensajes de un chat");
+            System.out.println("3. Enviar mensaje");
+            System.out.println("4. Proponer fecha de tutoría");
+            System.out.println("5. Ver y responder propuestas de fecha");
+            System.out.println("6. Volver");
+            opcion = leerEntero("Selecciona una opción: ");
+
+            if (opcion == 1) {
+                verChats(sesion);
+            } else if (opcion == 2) {
+                verMensajes(sesion);
+            } else if (opcion == 3) {
+                enviarMensaje(sesion);
+            } else if (opcion == 4) {
+                proponerFecha(sesion);
+            } else if (opcion == 5) {
+                responderPropuestas(sesion);
+            }
+        }
+    }
+
+    private static void verChats(Perfil_usuario sesion) {
+        try {
+            List<Solicitud> chats = chat.listarChatsDisponibles(sesion);
+
+            if (chats.isEmpty()) {
+                System.out.println("Todavía no tienes chats habilitados. Se habilitan cuando se acepta una solicitud.");
+            }
+
+            for (Solicitud solicitud : chats) {
+                System.out.println("Chat #" + solicitud.getIdSolicitud() + " | Estudiante: " + solicitud.getNombreEstudiante()
+                        + " | Tutor: " + solicitud.getNombreTutor() + " | Materia: " + solicitud.getMateria());
+            }
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    private static void verMensajes(Perfil_usuario sesion) {
+        int idSolicitud = leerEntero("Número de chat: ");
+
+        try {
+            List<Mensaje> mensajes = chat.obtenerMensajes(sesion, idSolicitud);
+
+            if (mensajes.isEmpty()) {
+                System.out.println("Todavía no hay mensajes en este chat.");
+            }
+
+            for (Mensaje mensaje : mensajes) {
+                System.out.println(mensaje);
+            }
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    private static void enviarMensaje(Perfil_usuario sesion) {
+        int idSolicitud = leerEntero("Número de chat: ");
+        String texto = leerTexto("Mensaje: ");
+
+        try {
+            chat.enviarMensaje(sesion, idSolicitud, texto);
+            System.out.println("Mensaje enviado.");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            System.out.println("No se pudo enviar el mensaje: " + e.getMessage());
+        }
+    }
+
+    private static void proponerFecha(Perfil_usuario sesion) {
+        int idSolicitud = leerEntero("Número de chat: ");
+        String fecha = leerTexto("Fecha y hora (aaaa-MM-dd HH:mm): ");
+
+        try {
+            int idPropuesta = calendario.proponerFecha(sesion, idSolicitud, fecha);
+            System.out.println("Propuesta enviada por el chat (propuesta #" + idPropuesta + ").");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            System.out.println("No se pudo proponer la fecha: " + e.getMessage());
+        }
+    }
+
+    private static void responderPropuestas(Perfil_usuario sesion) {
+        int idSolicitud = leerEntero("Número de chat: ");
+
+        try {
+            List<PropuestaFecha> pendientes = calendario.listarPropuestasPendientes(sesion, idSolicitud);
+
+            if (pendientes.isEmpty()) {
+                System.out.println("No hay propuestas pendientes en este chat.");
+                return;
+            }
+
+            for (PropuestaFecha propuesta : pendientes) {
+                System.out.println(propuesta);
+            }
+
+            int idPropuesta = leerEntero("Número de propuesta a responder (0 para cancelar): ");
+            if (idPropuesta == 0) {
+                return;
+            }
+
+            String respuesta = leerTexto("¿Aceptar la fecha? (s/n): ");
+            calendario.responderPropuesta(sesion, idPropuesta, respuesta.equalsIgnoreCase("s"));
+            System.out.println("Respuesta enviada por el chat.");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            System.out.println("No se pudo responder la propuesta: " + e.getMessage());
+        }
+    }
+
+    private static void verCalendario(Perfil_usuario sesion) {
+        try {
+            List<PropuestaFecha> reservadas = calendario.verCalendario(sesion);
+
+            System.out.println("\n--- Calendario: fechas reservadas ---");
+            if (reservadas.isEmpty()) {
+                System.out.println("No tienes fechas reservadas.");
+            }
+
+            for (PropuestaFecha reserva : reservadas) {
+                System.out.println(reserva.descripcionReserva());
+            }
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            System.out.println(e.getMessage());
         }
     }
 }

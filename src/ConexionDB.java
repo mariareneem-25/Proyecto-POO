@@ -1,5 +1,7 @@
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
  
@@ -30,15 +32,64 @@ public class ConexionDB {
                 "tipoUsuario TEXT NOT NULL, " +
                 "estadoCuenta TEXT NOT NULL)";
  
+        String sqlSolicitudes = "CREATE TABLE IF NOT EXISTS solicitudes (" +
+                "idSolicitud INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "idEstudiante INTEGER NOT NULL, " +
+                "idTutor INTEGER NOT NULL, " +
+                "materia TEXT NOT NULL, " +
+                "mensaje TEXT NOT NULL, " +
+                "estado TEXT NOT NULL, " +
+                "motivoRechazo TEXT)";
+
+        String sqlMensajes = "CREATE TABLE IF NOT EXISTS mensajes (" +
+                "idMensaje INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "idSolicitud INTEGER NOT NULL, " +
+                "idEmisor INTEGER NOT NULL, " +
+                "texto TEXT NOT NULL, " +
+                "fecha TEXT NOT NULL)";
+
+        String sqlPropuestas = "CREATE TABLE IF NOT EXISTS propuestasFecha (" +
+                "idPropuesta INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "idSolicitud INTEGER NOT NULL, " +
+                "idProponente INTEGER NOT NULL, " +
+                "fechaHora TEXT NOT NULL, " +
+                "estado TEXT NOT NULL)";
+
+        String sqlLogros = "CREATE TABLE IF NOT EXISTS logros (" +
+                "idLogro INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "idUsuario INTEGER NOT NULL, " +
+                "tema TEXT NOT NULL, " +
+                "completado INTEGER NOT NULL)";
+
         try (Connection conexion = conectar();
              Statement st = conexion.createStatement()) {
  
             st.execute(sqlCorreos);
             st.execute(sqlUsuarios);
+            st.execute(sqlSolicitudes);
+            st.execute(sqlMensajes);
+            st.execute(sqlPropuestas);
+            st.execute(sqlLogros);
  
         } catch (SQLException e) {
             System.out.println("Error al crear las tablas: " + e.getMessage());
         }
     }
+
+    public static boolean existe(String sql, Object... parametros) {
+        try (Connection conexion = conectar();
+             PreparedStatement ps = conexion.prepareStatement(sql)) {
+
+            for (int i = 0; i < parametros.length; i++) {
+                ps.setObject(i + 1, parametros[i]);
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+
+        } catch (SQLException e) {
+            throw new IllegalStateException("Error en la base de datos: " + e.getMessage());
+        }
+    }
 }
- 
