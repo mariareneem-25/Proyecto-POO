@@ -1,20 +1,44 @@
+import java.io.PrintStream;
+import java.text.Normalizer;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Scanner;
 
 public class Main {
 
     private static final Scanner sc = new Scanner(System.in);
+    private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM HH:mm");
+
+    private static final UsuarioRepositorio repositorioUsuarios = new UsuarioRepositorioPerfil();
     private static final Foro foro = new Foro();
+    private static final ServicioChat servicioChat = new ServicioChat(repositorioUsuarios);
     private static final Controlaracceso acceso = new Controlaracceso();
     private static final Gestionarsolicitudes solicitudes = new Gestionarsolicitudes();
-    private static final HabilitarChat chat = new HabilitarChat();
+    private static final HabilitarChat chatTutoria = new HabilitarChat();
     private static final GestionarCalendario calendario = new GestionarCalendario();
     private static final RepositorioLogros logros = new RepositorioLogros();
 
     public static void main(String[] args) {
+        // quita tildes y la ñ de todo lo que se imprime en consola
+        System.setOut(new PrintStream(System.out, true) {
+            @Override
+            public void print(String s) {
+                if (s == null) {
+                    super.print(s);
+                    return;
+                }
+                String sinTildes = Normalizer.normalize(s, Normalizer.Form.NFD)
+                        .replaceAll("\\p{M}", "")
+                        .replace("\u00BF", "")
+                        .replace("\u00A1", "");
+                super.print(sinTildes);
+            }
+        });
+
         ConexionDB.crearTablas();
         Perfil_usuario.registrarCorreo("estudiante1@uvg.edu.gt", "estudiante");
         Perfil_usuario.registrarCorreo("director1@uvg.edu.gt", "director");
+        Perfil_usuario.registrarCorreo("docente1@uvg.edu.gt", "docente");
 
         iniciarMenu();
     }
@@ -50,11 +74,21 @@ public class Main {
         System.out.println("Programa finalizado.");
     }
 
+    private static int leerEntero(String mensaje) {
+        System.out.print(mensaje);
+        String linea = sc.nextLine().trim();
+        try {
+            return Integer.parseInt(linea);
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+    }
+
     private static void agregarCorreoAutorizado() {
         System.out.print("Correo a autorizar: ");
         String correo = sc.nextLine();
 
-        System.out.println("Tipo de usuario (estudiante / director): ");
+        System.out.println("Tipo de usuario (estudiante / docente / director): ");
         String tipo = sc.nextLine();
 
         if (Perfil_usuario.registrarCorreo(correo, tipo)) {
@@ -96,6 +130,9 @@ public class Main {
                 break;
             case "director":
                 tipo = Perfil_usuario.TipoUsuario.DIRECTOR;
+                break;
+            case "docente":
+                tipo = Perfil_usuario.TipoUsuario.DOCENTE;
                 break;
             default:
                 System.out.println("Registro rechazado: tipo de usuario no reconocido.");
@@ -149,17 +186,31 @@ public class Main {
 
         System.out.println("Sesión iniciada como: " + sesion.getNombre());
 
-        Usuario usuarioForo = AdaptadorUsuario.convertir(sesion);
+        // se convierte la sesión a un Usuario real (Estudiante/Tutor) una sola vez
+        Usuario usuarioActual = AdaptadorUsuario.convertir(sesion);
+
+        if (usuarioActual instanceof Tutor) {
+            System.out.println("Estado de tu solicitud de tutor: " + ((Tutor) usuarioActual).getEstadoSolicitud());
+        }
+
+        // docentes y directores pueden validar las solicitudes de tutor
+        boolean puedeValidar = sesion.getTipoUsuario() == Perfil_usuario.TipoUsuario.DOCENTE
+                || sesion.getTipoUsuario() == Perfil_usuario.TipoUsuario.DIRECTOR;
+        int opcionSalir = puedeValidar ? 9 : 8;
 
         int subopcion = -1;
-        while (subopcion != 7) {
+        while (subopcion != opcionSalir) {
             System.out.println("\n1. Actualizar perfil");
             System.out.println("2. Eliminar perfil");
             System.out.println("3. Foro académico");
-            System.out.println("4. Solicitudes de tutoría");
-            System.out.println("5. Chat privado");
-            System.out.println("6. Calendario");
-            System.out.println("7. Cerrar sesión");
+            System.out.println("4. Chat");
+            System.out.println("5. Solicitudes de tutoría");
+            System.out.println("6. Chat de tutoría");
+            System.out.println("7. Calendario");
+            if (puedeValidar) {
+                System.out.println("8. Validar solicitudes de tutor");
+            }
+            System.out.println(opcionSalir + ". Cerrar sesión");
             System.out.print("Selecciona una opción: ");
 
             if (sc.hasNextInt()) {
@@ -178,15 +229,19 @@ public class Main {
                 } else {
                     System.out.println("No se pudo eliminar el perfil.");
                 }
-                subopcion = 7;
+                subopcion = opcionSalir;
             } else if (subopcion == 3) {
-                menuForo(usuarioForo);
+                menuForo(usuarioActual);
             } else if (subopcion == 4) {
-                menuSolicitudes(sesion);
+                menuChat(usuarioActual);
             } else if (subopcion == 5) {
-                menuChat(sesion);
+                menuSolicitudes(sesion);
             } else if (subopcion == 6) {
+                menuChatTutoria(sesion);
+            } else if (subopcion == 7) {
                 verCalendario(sesion);
+            } else if (puedeValidar && subopcion == 8) {
+                validarSolicitudesTutor(sesion);
             }
         }
 
@@ -207,6 +262,57 @@ public class Main {
             System.out.println("No se pudo actualizar el perfil.");
         }
     }
+
+    // ---------------------------------------------------------------
+    // Validación de solicitudes de tutor (docentes y directores)
+    // ---------------------------------------------------------------
+
+    private static void validarSolicitudesTutor(Perfil_usuario validador) {
+        List<Perfil_usuario> pendientes = Perfil_usuario.listarTutoresPendientes();
+
+        if (pendientes.isEmpty()) {
+            System.out.println("No hay solicitudes de tutor pendientes.");
+            return;
+        }
+
+        System.out.println("\nSolicitudes de tutor pendientes:");
+        for (int i = 0; i < pendientes.size(); i++) {
+            Perfil_usuario p = pendientes.get(i);
+            System.out.println((i + 1) + ". " + p.getNombre() + " <" + p.getCorreoElectronico() + ">");
+        }
+
+        int eleccion = leerEntero("Selecciona una solicitud (0 para volver): ");
+        if (eleccion < 1 || eleccion > pendientes.size()) {
+            return;
+        }
+
+        Perfil_usuario tutor = pendientes.get(eleccion - 1);
+
+        System.out.println("\n1. Aprobar");
+        System.out.println("2. Rechazar");
+        System.out.println("3. Cancelar");
+        int decision = leerEntero("Selecciona una opción: ");
+
+        if (decision == 1) {
+            if (Perfil_usuario.guardarEstadoSolicitudTutor(
+                    tutor.getIdUsuario(), EstadoSolicitud.APROBADO, validador.getIdUsuario())) {
+                System.out.println("Solicitud aprobada.");
+            } else {
+                System.out.println("No se pudo guardar la decisión.");
+            }
+        } else if (decision == 2) {
+            if (Perfil_usuario.guardarEstadoSolicitudTutor(
+                    tutor.getIdUsuario(), EstadoSolicitud.RECHAZADO, validador.getIdUsuario())) {
+                System.out.println("Solicitud rechazada.");
+            } else {
+                System.out.println("No se pudo guardar la decisión.");
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // Foro académico
+    // ---------------------------------------------------------------
 
     private static void menuForo(Usuario usuarioForo) {
         if (usuarioForo == null) {
@@ -277,12 +383,157 @@ public class Main {
         }
     }
 
-    private static int leerEntero(String mensaje) {
-        System.out.print(mensaje);
+    // ---------------------------------------------------------------
+    // Chat estudiante - tutor
+    // ---------------------------------------------------------------
+
+    private static void menuChat(Usuario usuario) {
+        if (usuario == null) {
+            System.out.println("Tu tipo de cuenta todavía no puede usar el chat.");
+            return;
+        }
+
+        int opcion = -1;
+        while (opcion != 3) {
+            System.out.println("\n--- Chat ---");
+            System.out.println("1. Mis conversaciones");
+            System.out.println("2. Nueva conversación");
+            System.out.println("3. Volver");
+            opcion = leerEntero("Selecciona una opción: ");
+
+            if (opcion == 1) {
+                verConversaciones(usuario);
+            } else if (opcion == 2) {
+                nuevaConversacion(usuario);
+            }
+        }
+    }
+
+    private static void verConversaciones(Usuario usuario) {
+        List<Conversacion> conversaciones;
         try {
-            return Integer.parseInt(sc.nextLine().trim());
-        } catch (NumberFormatException e) {
-            return -1;
+            conversaciones = servicioChat.conversacionesDe(usuario);
+        } catch (RuntimeException e) {
+            System.out.println("No se pudieron cargar las conversaciones: " + e.getMessage());
+            return;
+        }
+
+        if (conversaciones.isEmpty()) {
+            System.out.println("Todavía no tienes conversaciones.");
+            return;
+        }
+
+        for (int i = 0; i < conversaciones.size(); i++) {
+            Conversacion c = conversaciones.get(i);
+            System.out.println((i + 1) + ". " + c.getOtroParticipante(usuario).getNombreCompleto()
+                    + " (" + c.getMensajes().size() + " mensajes)");
+        }
+
+        int eleccion = leerEntero("Selecciona una conversación (0 para volver): ");
+        if (eleccion >= 1 && eleccion <= conversaciones.size()) {
+            abrirConversacion(conversaciones.get(eleccion - 1), usuario);
+        }
+    }
+
+    private static void nuevaConversacion(Usuario usuario) {
+        boolean soyEstudiante = usuario instanceof Estudiante;
+
+        Perfil_usuario.TipoUsuario tipoBuscado = soyEstudiante
+                ? Perfil_usuario.TipoUsuario.TUTOR
+                : Perfil_usuario.TipoUsuario.ESTUDIANTE;
+
+        List<Perfil_usuario> candidatos = Perfil_usuario.listarPorTipo(tipoBuscado);
+        candidatos.removeIf(p -> String.valueOf(p.getIdUsuario()).equals(usuario.getIdUsuario()));
+
+        if (candidatos.isEmpty()) {
+            System.out.println("No hay " + (soyEstudiante ? "tutores" : "estudiantes") + " disponibles.");
+            return;
+        }
+
+        System.out.println("\n" + (soyEstudiante ? "Tutores" : "Estudiantes") + " disponibles:");
+        for (int i = 0; i < candidatos.size(); i++) {
+            System.out.println((i + 1) + ". " + candidatos.get(i).getNombre());
+        }
+
+        int eleccion = leerEntero("Selecciona una persona (0 para volver): ");
+        if (eleccion < 1 || eleccion > candidatos.size()) {
+            return;
+        }
+
+        Usuario otro = AdaptadorUsuario.convertir(candidatos.get(eleccion - 1));
+        if (otro == null) {
+            System.out.println("No se pudo abrir la conversación con ese usuario.");
+            return;
+        }
+
+        try {
+            Estudiante estudiante = soyEstudiante ? (Estudiante) usuario : (Estudiante) otro;
+            Tutor tutor = soyEstudiante ? (Tutor) otro : (Tutor) usuario;
+
+            Conversacion conversacion = servicioChat.iniciarConversacion(estudiante, tutor);
+            abrirConversacion(conversacion, usuario);
+        } catch (RuntimeException e) {
+            System.out.println("No se pudo iniciar la conversación: " + e.getMessage());
+        }
+    }
+
+    private static void abrirConversacion(Conversacion conversacion, Usuario usuario) {
+        int opcion = -1;
+
+        while (opcion != 4) {
+            mostrarMensajes(conversacion, usuario);
+
+            System.out.println("\n1. Enviar mensaje");
+            System.out.println("2. Enviar imagen o archivo");
+            System.out.println("3. Actualizar");
+            System.out.println("4. Volver");
+            opcion = leerEntero("Selecciona una opción: ");
+
+            try {
+                if (opcion == 1) {
+                    System.out.print("Mensaje: ");
+                    servicioChat.enviarTexto(conversacion, usuario, sc.nextLine());
+                } else if (opcion == 2) {
+                    System.out.print("Ruta del archivo: ");
+                    String ruta = sc.nextLine();
+                    System.out.print("Descripción (opcional): ");
+                    String descripcion = sc.nextLine();
+                    servicioChat.enviarArchivo(conversacion, usuario, ruta, descripcion);
+                    System.out.println("Archivo enviado.");
+                } else if (opcion == 3) {
+                    conversacion = servicioChat.recargar(conversacion);
+                }
+            } catch (RuntimeException e) {
+                System.out.println("No se pudo completar la acción: " + e.getMessage());
+            }
+        }
+    }
+
+    private static void mostrarMensajes(Conversacion conversacion, Usuario usuario) {
+        System.out.println("\n=== Chat con "
+                + conversacion.getOtroParticipante(usuario).getNombreCompleto() + " ===");
+
+        List<Mensaje> mensajes = conversacion.getMensajes();
+        if (mensajes.isEmpty()) {
+            System.out.println("(Todavía no hay mensajes)");
+            return;
+        }
+
+        for (Mensaje m : mensajes) {
+            boolean esMio = m.getRemitente().getIdUsuario().equals(usuario.getIdUsuario());
+            String autor = esMio ? "Tú" : m.getRemitente().getNombreCompleto();
+
+            String linea = "[" + m.getFecha().format(FORMATO_FECHA) + "] " + autor + ": ";
+            if (m.tieneArchivo()) {
+                linea += "[" + m.getTipo() + "] " + GestorArchivos.nombreOriginal(m.getRutaArchivo())
+                        + " (" + m.getRutaArchivo() + ")";
+                if (!m.getContenido().isBlank()) {
+                    linea += " - " + m.getContenido();
+                }
+            } else {
+                linea += m.getContenido();
+            }
+            System.out.println(linea);
         }
     }
 
@@ -487,7 +738,7 @@ public class Main {
         }
     }
 
-    private static void menuChat(Perfil_usuario sesion) {
+    private static void menuChatTutoria(Perfil_usuario sesion) {
         if (!acceso.puedeUsarChat(sesion)) {
             System.out.println("Tu tipo de cuenta no puede usar el chat privado.");
             return;
@@ -496,7 +747,7 @@ public class Main {
         int opcion = -1;
 
         while (opcion != 6) {
-            System.out.println("\n--- Chat privado ---");
+            System.out.println("\n--- Chat de tutoría ---");
             System.out.println("1. Ver mis chats");
             System.out.println("2. Ver mensajes de un chat");
             System.out.println("3. Enviar mensaje");
@@ -521,7 +772,7 @@ public class Main {
 
     private static void verChats(Perfil_usuario sesion) {
         try {
-            List<Solicitud> chats = chat.listarChatsDisponibles(sesion);
+            List<Solicitud> chats = chatTutoria.listarChatsDisponibles(sesion);
 
             if (chats.isEmpty()) {
                 System.out.println("Todavía no tienes chats habilitados. Se habilitan cuando se acepta una solicitud.");
@@ -540,13 +791,13 @@ public class Main {
         int idSolicitud = leerEntero("Número de chat: ");
 
         try {
-            List<Mensaje> mensajes = chat.obtenerMensajes(sesion, idSolicitud);
+            List<MensajeChat> mensajes = chatTutoria.obtenerMensajes(sesion, idSolicitud);
 
             if (mensajes.isEmpty()) {
                 System.out.println("Todavía no hay mensajes en este chat.");
             }
 
-            for (Mensaje mensaje : mensajes) {
+            for (MensajeChat mensaje : mensajes) {
                 System.out.println(mensaje);
             }
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -559,7 +810,7 @@ public class Main {
         String texto = leerTexto("Mensaje: ");
 
         try {
-            chat.enviarMensaje(sesion, idSolicitud, texto);
+            chatTutoria.enviarMensaje(sesion, idSolicitud, texto);
             System.out.println("Mensaje enviado.");
         } catch (IllegalArgumentException | IllegalStateException e) {
             System.out.println("No se pudo enviar el mensaje: " + e.getMessage());

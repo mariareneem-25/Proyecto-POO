@@ -31,6 +31,11 @@ public class ConexionDB {
                 "fotoPerfil TEXT, " +
                 "tipoUsuario TEXT NOT NULL, " +
                 "estadoCuenta TEXT NOT NULL)";
+
+        String sqlSolicitudesTutor = "CREATE TABLE IF NOT EXISTS solicitudes_tutor (" +
+                "idTutor INTEGER PRIMARY KEY, " +
+                "estado TEXT NOT NULL, " +
+                "aprobadoPor INTEGER)";
  
         String sqlSolicitudes = "CREATE TABLE IF NOT EXISTS solicitudes (" +
                 "idSolicitud INTEGER PRIMARY KEY AUTOINCREMENT, " +
@@ -41,7 +46,7 @@ public class ConexionDB {
                 "estado TEXT NOT NULL, " +
                 "motivoRechazo TEXT)";
 
-        String sqlMensajes = "CREATE TABLE IF NOT EXISTS mensajes (" +
+        String sqlMensajes = "CREATE TABLE IF NOT EXISTS mensajesTutoria (" +
                 "idMensaje INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "idSolicitud INTEGER NOT NULL, " +
                 "idEmisor INTEGER NOT NULL, " +
@@ -66,6 +71,7 @@ public class ConexionDB {
  
             st.execute(sqlCorreos);
             st.execute(sqlUsuarios);
+            st.execute(sqlSolicitudesTutor);
             st.execute(sqlSolicitudes);
             st.execute(sqlMensajes);
             st.execute(sqlPropuestas);
