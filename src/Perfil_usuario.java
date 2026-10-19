@@ -374,6 +374,35 @@ public class Perfil_usuario {
         }
     }
 
+    public boolean actualizarInformacionPerfil(String nuevaDescripcion, String nuevoBanner) {
+
+    String sql = "UPDATE usuarios SET descripcion = ?, banner = ? WHERE idUsuario = ?";
+
+    try (Connection conexion = ConexionDB.conectar();
+         PreparedStatement ps = conexion.prepareStatement(sql)) {
+
+        ps.setString(1, nuevaDescripcion);
+        ps.setString(2, nuevoBanner);
+        ps.setInt(3, this.idUsuario);
+
+        int filas = ps.executeUpdate();
+
+        if (filas > 0) {
+            this.descripcion = nuevaDescripcion;
+            this.banner = nuevoBanner;
+            return true;
+        }
+
+        return false;
+
+    } catch (SQLException e) {
+        System.out.println(
+                "Error al actualizar descripcion y banner: " + e.getMessage()
+        );
+        return false;
+    }
+}
+
     public boolean eliminarPerfil() {
         String sql = "UPDATE usuarios SET estadoCuenta = ? WHERE idUsuario = ?";
         try (Connection conexion = ConexionDB.conectar();
@@ -397,18 +426,21 @@ public class Perfil_usuario {
     }
 
     private boolean guardarEnBD() {
-        String sql = "INSERT INTO usuarios (nombre, correoElectronico, contrasena, fotoPerfil, tipoUsuario, estadoCuenta) "
-                + "VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO usuarios "
+                + "(nombre, correoElectronico, contrasena, fotoPerfil, descripcion, banner, tipoUsuario, estadoCuenta) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conexion = ConexionDB.conectar();
              PreparedStatement ps = conexion.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-
+            
             ps.setString(1, nombre);
             ps.setString(2, correoElectronico);
             ps.setString(3, contrasena);
             ps.setString(4, fotoPerfil);
-            ps.setString(5, tipoUsuario.name());
-            ps.setString(6, estadoCuenta.name());
+            ps.setString(5, descripcion);
+            ps.setString(6, banner);
+            ps.setString(7, tipoUsuario.name());
+            ps.setString(8, estadoCuenta.name());
 
             ps.executeUpdate();
 
