@@ -18,6 +18,8 @@ public class Perfil_usuario {
     private String correoElectronico;
     private String contrasena;
     private String fotoPerfil;
+    private String descripcion;
+    private String banner;
     private TipoUsuario tipoUsuario;
     private EstadoCuenta estadoCuenta;
 
@@ -41,6 +43,8 @@ public class Perfil_usuario {
     public String getNombre() { return nombre; }
     public String getCorreoElectronico() { return correoElectronico; }
     public String getFotoPerfil() { return fotoPerfil; }
+    public String getDescripcion() { return descripcion; }
+    public String getBanner() { return banner; }
     public TipoUsuario getTipoUsuario() { return tipoUsuario; }
     public EstadoCuenta getEstadoCuenta() { return estadoCuenta; }
     public boolean isSesionActiva() { return sesionActiva; }
