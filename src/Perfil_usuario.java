@@ -27,14 +27,17 @@ public class Perfil_usuario {
 
     public Perfil_usuario() {
     }
-
+    
     private Perfil_usuario(int idUsuario, String nombre, String correoElectronico, String contrasena,
-                            String fotoPerfil, TipoUsuario tipoUsuario, EstadoCuenta estadoCuenta) {
+                       String fotoPerfil, String descripcion, String banner,
+                       TipoUsuario tipoUsuario, EstadoCuenta estadoCuenta) {
         this.idUsuario = idUsuario;
         this.nombre = nombre;
         this.correoElectronico = correoElectronico;
         this.contrasena = contrasena;
         this.fotoPerfil = fotoPerfil;
+        this.descripcion = descripcion;
+        this.banner = banner;
         this.tipoUsuario = tipoUsuario;
         this.estadoCuenta = estadoCuenta;
     }
@@ -162,9 +165,18 @@ public class Perfil_usuario {
                 rechazarRegistro();
                 return null;
         }
-
-        Perfil_usuario usuario = new Perfil_usuario(0, nombre, correo.toLowerCase(), contrasena,
-                fotoPerfil, tipo, EstadoCuenta.ACTIVA);
+        
+        Perfil_usuario usuario = new Perfil_usuario(
+            0,
+            nombre,
+            correo.toLowerCase(),
+            contrasena,
+            fotoPerfil,
+            "",
+            "",
+            tipo,
+            EstadoCuenta.ACTIVA
+        );
 
         if (!usuario.guardarEnBD()) {
             return null;
@@ -198,15 +210,17 @@ public class Perfil_usuario {
                     return null;
                 }
 
-                Perfil_usuario usuario = new Perfil_usuario(
-                        rs.getInt("idUsuario"),
-                        rs.getString("nombre"),
-                        rs.getString("correoElectronico"),
-                        rs.getString("contrasena"),
-                        rs.getString("fotoPerfil"),
-                        TipoUsuario.valueOf(rs.getString("tipoUsuario")),
-                        estado
-                );
+               Perfil_usuario usuario = new Perfil_usuario(
+                    rs.getInt("idUsuario"),
+                    rs.getString("nombre"),
+                    rs.getString("correoElectronico"),
+                    rs.getString("contrasena"),
+                    rs.getString("fotoPerfil"),
+                    rs.getString("descripcion"),
+                    rs.getString("banner"),
+                    TipoUsuario.valueOf(rs.getString("tipoUsuario")),
+                    estado
+               );
                 usuario.sesionActiva = true;
                 return usuario;
             }
@@ -223,13 +237,15 @@ public class Perfil_usuario {
 
     private static Perfil_usuario desdeResultSet(ResultSet rs) throws SQLException {
         return new Perfil_usuario(
-                rs.getInt("idUsuario"),
-                rs.getString("nombre"),
-                rs.getString("correoElectronico"),
-                rs.getString("contrasena"),
-                rs.getString("fotoPerfil"),
-                TipoUsuario.valueOf(rs.getString("tipoUsuario")),
-                EstadoCuenta.valueOf(rs.getString("estadoCuenta"))
+            rs.getInt("idUsuario"),
+            rs.getString("nombre"),
+            rs.getString("correoElectronico"),
+            rs.getString("contrasena"),
+            rs.getString("fotoPerfil"),
+            rs.getString("descripcion"),
+            rs.getString("banner"),
+            TipoUsuario.valueOf(rs.getString("tipoUsuario")),
+            EstadoCuenta.valueOf(rs.getString("estadoCuenta"))
         );
     }
 
