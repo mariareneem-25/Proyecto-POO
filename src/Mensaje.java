@@ -1,33 +1,3 @@
-<<<<<<< HEAD
-public class Mensaje {
-
-    private int idMensaje;
-    private int idSolicitud;
-    private int idEmisor;
-    private String nombreEmisor;
-    private String texto;
-    private String fecha;
-
-    public Mensaje(int idMensaje, int idSolicitud, int idEmisor, String nombreEmisor, String texto, String fecha) {
-        this.idMensaje = idMensaje;
-        this.idSolicitud = idSolicitud;
-        this.idEmisor = idEmisor;
-        this.nombreEmisor = nombreEmisor;
-        this.texto = texto;
-        this.fecha = fecha;
-    }
-
-    public int getIdMensaje() { return idMensaje; }
-    public int getIdSolicitud() { return idSolicitud; }
-    public int getIdEmisor() { return idEmisor; }
-    public String getNombreEmisor() { return nombreEmisor; }
-    public String getTexto() { return texto; }
-    public String getFecha() { return fecha; }
-
-    @Override
-    public String toString() {
-        return "[" + fecha + "] " + nombreEmisor + ": " + texto;
-=======
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -115,6 +85,5 @@ public class Mensaje {
 
     public LocalDateTime getFecha() {
         return fecha;
->>>>>>> 505f0011781e763a3bfa84b47e9502c76bb887b9
     }
 }
