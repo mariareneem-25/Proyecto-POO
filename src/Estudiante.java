@@ -86,4 +86,9 @@ public boolean completarLogro(String tema) {
     public boolean puedeSerAnonimo() {
         return true;
     }
+
+        @Override
+    public boolean puedePublicar() {
+        return true;
+    }
 }

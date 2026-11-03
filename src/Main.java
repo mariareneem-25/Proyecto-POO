@@ -193,26 +193,18 @@ public class Main {
             System.out.println("Estado de tu solicitud de tutor: " + ((Tutor) usuarioActual).getEstadoSolicitud());
         }
 
-        // docentes y directores pueden validar las solicitudes de tutor
-        boolean puedeValidar = sesion.getTipoUsuario() == Perfil_usuario.TipoUsuario.DOCENTE
-                || sesion.getTipoUsuario() == Perfil_usuario.TipoUsuario.DIRECTOR;
-        int opcionSalir = puedeValidar ? 9 : 8;
+        // las opciones salen de MenuPrincipal según el tipo de cuenta
+        List<String> menu = MenuPrincipal.opcionesPara(sesion, acceso);
 
-        int subopcion = -1;
-        while (subopcion != opcionSalir) {
-            System.out.println("\n1. Actualizar perfil");
-            System.out.println("2. Eliminar perfil");
-            System.out.println("3. Foro académico");
-            System.out.println("4. Chat");
-            System.out.println("5. Solicitudes de tutoría");
-            System.out.println("6. Chat de tutoría");
-            System.out.println("7. Calendario");
-            if (puedeValidar) {
-                System.out.println("8. Validar solicitudes de tutor");
+        boolean salir = false;
+        while (!salir) {
+            System.out.println();
+            for (int i = 0; i < menu.size(); i++) {
+                System.out.println((i + 1) + ". " + menu.get(i));
             }
-            System.out.println(opcionSalir + ". Cerrar sesión");
             System.out.print("Selecciona una opción: ");
 
+            int subopcion;
             if (sc.hasNextInt()) {
                 subopcion = sc.nextInt();
             } else {
@@ -221,27 +213,39 @@ public class Main {
             }
             sc.nextLine();
 
-            if (subopcion == 1) {
-                actualizarPerfil(sesion);
-            } else if (subopcion == 2) {
-                if (sesion.eliminarPerfil()) {
-                    System.out.println("Perfil eliminado.");
-                } else {
-                    System.out.println("No se pudo eliminar el perfil.");
-                }
-                subopcion = opcionSalir;
-            } else if (subopcion == 3) {
-                menuForo(usuarioActual);
-            } else if (subopcion == 4) {
-                menuChat(usuarioActual);
-            } else if (subopcion == 5) {
-                menuSolicitudes(sesion);
-            } else if (subopcion == 6) {
-                menuChatTutoria(sesion);
-            } else if (subopcion == 7) {
-                verCalendario(sesion);
-            } else if (puedeValidar && subopcion == 8) {
-                validarSolicitudesTutor(sesion);
+            if (subopcion < 1 || subopcion > menu.size()) {
+                continue;
+            }
+
+            switch (menu.get(subopcion - 1)) {
+                case MenuPrincipal.ACTUALIZAR_PERFIL:
+                    actualizarPerfil(sesion);
+                    break;
+                case MenuPrincipal.ELIMINAR_PERFIL:
+                    if (sesion.eliminarPerfil()) {
+                        System.out.println("Perfil eliminado.");
+                    } else {
+                        System.out.println("No se pudo eliminar el perfil.");
+                    }
+                    salir = true;
+                    break;
+                case MenuPrincipal.FORO:
+                    menuForo(usuarioActual);
+                    break;
+                case MenuPrincipal.CHAT:
+                    menuChat(usuarioActual, sesion);
+                    break;
+                case MenuPrincipal.SOLICITUDES:
+                    menuSolicitudes(sesion);
+                    break;
+                case MenuPrincipal.CALENDARIO:
+                    verCalendario(sesion);
+                    break;
+                case MenuPrincipal.CERRAR_SESION:
+                    salir = true;
+                    break;
+                default:
+                    break;
             }
         }
 
@@ -315,33 +319,7 @@ public class Main {
     // ---------------------------------------------------------------
 
     private static void menuForo(Usuario usuarioForo) {
-        if (usuarioForo == null) {
-            System.out.println("Tu tipo de cuenta todavía no puede participar en el foro académico.");
-            return;
-        }
-
-        int opcion = -1;
-        while (opcion != 3) {
-            System.out.println("\n--- Foro académico ---");
-            System.out.println("1. Ver publicaciones");
-            System.out.println("2. Crear publicación");
-            System.out.println("3. Volver");
-            System.out.print("Selecciona una opción: ");
-
-            if (sc.hasNextInt()) {
-                opcion = sc.nextInt();
-            } else {
-                sc.next();
-                continue;
-            }
-            sc.nextLine();
-
-            if (opcion == 1) {
-                verPublicaciones();
-            } else if (opcion == 2) {
-                crearPublicacion(usuarioForo);
-            }
-        }
+        new ForoConsola(sc, foro, repositorioUsuarios).abrir(usuarioForo);
     }
 
     private static void verPublicaciones() {
@@ -387,24 +365,27 @@ public class Main {
     // Chat estudiante - tutor
     // ---------------------------------------------------------------
 
-    private static void menuChat(Usuario usuario) {
-        if (usuario == null) {
+    private static void menuChat(Usuario usuario, Perfil_usuario sesion) {
+        if (usuario == null || usuario instanceof Docente) {
             System.out.println("Tu tipo de cuenta todavía no puede usar el chat.");
             return;
         }
 
         int opcion = -1;
-        while (opcion != 3) {
+        while (opcion != 4) {
             System.out.println("\n--- Chat ---");
             System.out.println("1. Mis conversaciones");
             System.out.println("2. Nueva conversación");
-            System.out.println("3. Volver");
+            System.out.println("3. Chats de tutoría (solicitudes aceptadas y calendario)");
+            System.out.println("4. Volver");
             opcion = leerEntero("Selecciona una opción: ");
 
             if (opcion == 1) {
                 verConversaciones(usuario);
             } else if (opcion == 2) {
                 nuevaConversacion(usuario);
+            } else if (opcion == 3) {
+                menuChatTutoria(sesion);
             }
         }
     }
@@ -547,6 +528,10 @@ public class Main {
             menuSolicitudesEstudiante(sesion);
         } else if (acceso.puedeGestionarSolicitudes(sesion)) {
             menuSolicitudesTutor(sesion);
+        } else if (sesion.getTipoUsuario() == Perfil_usuario.TipoUsuario.DOCENTE
+                || sesion.getTipoUsuario() == Perfil_usuario.TipoUsuario.DIRECTOR) {
+            // docentes y directores validan las solicitudes de tutor desde aquí
+            validarSolicitudesTutor(sesion);
         } else {
             System.out.println("Tu tipo de cuenta no tiene acceso a las solicitudes de tutoría.");
         }
