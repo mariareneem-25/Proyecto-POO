@@ -27,6 +27,9 @@ public class Publicacion implements Publicable {
         if (autorReal == null) {
             throw new IllegalArgumentException("La publicación necesita un autor");
         }
+        if (!autorReal.puedePublicar()) {
+            throw new IllegalStateException("Este tipo de usuario solo puede comentar en el foro, no publicar");
+        }
         if (titulo == null || titulo.isBlank()) {
             throw new IllegalArgumentException("El título es obligatorio");
         }

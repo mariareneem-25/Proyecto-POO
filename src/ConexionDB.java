@@ -22,16 +22,18 @@ public class ConexionDB {
         String sqlCorreos = "CREATE TABLE IF NOT EXISTS correos_autorizados (" +
                 "correo TEXT PRIMARY KEY, " +
                 "tipo TEXT NOT NULL)";
- 
+     
         String sqlUsuarios = "CREATE TABLE IF NOT EXISTS usuarios (" +
                 "idUsuario INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 "nombre TEXT NOT NULL, " +
                 "correoElectronico TEXT NOT NULL UNIQUE, " +
                 "contrasena TEXT NOT NULL, " +
                 "fotoPerfil TEXT, " +
+                "descripcion TEXT, " +
+                "banner TEXT, " +
                 "tipoUsuario TEXT NOT NULL, " +
                 "estadoCuenta TEXT NOT NULL)";
-
+     
         String sqlSolicitudesTutor = "CREATE TABLE IF NOT EXISTS solicitudes_tutor (" +
                 "idTutor INTEGER PRIMARY KEY, " +
                 "estado TEXT NOT NULL, " +
@@ -76,6 +78,17 @@ public class ConexionDB {
             st.execute(sqlMensajes);
             st.execute(sqlPropuestas);
             st.execute(sqlLogros);
+        
+         try { 
+          st.execute("ALTER TABLE usuarios ADD COLUMN descripcion TEXT");
+         } catch (SQLException ignored) {
+          
+         }
+         try {
+          st.execute("ALTER TABLE usuarios ADD COLUMN banner TEXT");
+         } catch (SQLException ignored) {
+          
+         }
  
         } catch (SQLException e) {
             System.out.println("Error al crear las tablas: " + e.getMessage());
