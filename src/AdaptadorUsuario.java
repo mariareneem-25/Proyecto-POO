@@ -36,8 +36,16 @@ public class AdaptadorUsuario {
                 return tutor;
             }
 
+            case DOCENTE:
+                return new Docente(
+                        idComoTexto,
+                        perfil.getNombre(),
+                        perfil.getCorreoElectronico(),
+                        ""
+                );
+
             default:
-                // Docente, Director u otros tipos: todavía no soportado en el foro ni en el chat
+                // Director u otros tipos: todavía no soportado en el foro ni en el chat
                 return null;
         }
     }

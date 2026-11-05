@@ -217,26 +217,31 @@ public class Gestionarsolicitudes {
         return resultado;
     }
 
-    private String obtenerPerfil(int idEstudiante) {
-        String sql = "SELECT nombre, correoElectronico, fotoPerfil FROM usuarios WHERE idUsuario = ?";
+  private String obtenerPerfil(int idEstudiante) {
+    String sql = "SELECT nombre, correoElectronico, fotoPerfil, descripcion, banner "
+            + "FROM usuarios WHERE idUsuario = ?";
 
-        try (Connection conexion = ConexionDB.conectar();
-             PreparedStatement ps = conexion.prepareStatement(sql)) {
+    try (Connection conexion = ConexionDB.conectar();
+         PreparedStatement ps = conexion.prepareStatement(sql)) {
 
-            ps.setInt(1, idEstudiante);
+        ps.setInt(1, idEstudiante);
 
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return "Nombre: " + rs.getString("nombre")
-                            + "\nCorreo: " + rs.getString("correoElectronico")
-                            + "\nFoto de perfil: " + rs.getString("fotoPerfil");
-                }
+        try (ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                return "Nombre: " + rs.getString("nombre")
+                        + "\nCorreo: " + rs.getString("correoElectronico")
+                        + "\nFoto de perfil: " + rs.getString("fotoPerfil")
+                        + "\nDescripcion: " + rs.getString("descripcion")
+                        + "\nBanner: " + rs.getString("banner");
             }
-
-        } catch (SQLException e) {
-            throw new IllegalStateException("No se pudo obtener el perfil: " + e.getMessage());
         }
 
-        return "Perfil no disponible.";
+    } catch (SQLException e) {
+        throw new IllegalStateException(
+                "No se pudo obtener el perfil: " + e.getMessage()
+        );
     }
+
+    return "Perfil no disponible.";
+}
 }

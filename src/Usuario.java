@@ -39,4 +39,16 @@ public abstract class Usuario {
     public boolean puedeSerAnonimo() {
         return false;
     }
+
+    // permisos del foro académico
+    // por defecto un usuario solo puede comentar; Estudiante sobrescribe puedePublicar() para poder publicar
+    // así Tutor y Docente pueden comentar pero no publicar
+
+    public boolean puedePublicar() {
+        return false;
+    }
+
+    public boolean puedeComentar() {
+        return true;
+    }
 }

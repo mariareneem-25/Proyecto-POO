@@ -24,6 +24,9 @@ public class Comentario implements Publicable {
         if (autorReal == null) {
             throw new IllegalArgumentException("El comentario necesita un autor");
         }
+        if (!autorReal.puedeComentar()) {
+            throw new IllegalStateException("Este tipo de usuario no tiene permitido comentar en el foro");
+        }
         if (cuerpo == null || cuerpo.isBlank()) {
             throw new IllegalArgumentException("El cuerpo del comentario no puede estar vacío");
         }
