@@ -196,7 +196,7 @@ public class Main {
         // docentes y directores pueden validar las solicitudes de tutor
         boolean puedeValidar = sesion.getTipoUsuario() == Perfil_usuario.TipoUsuario.DOCENTE
                 || sesion.getTipoUsuario() == Perfil_usuario.TipoUsuario.DIRECTOR;
-        int opcionSalir = puedeValidar ? 9 : 8;
+        int opcionSalir = puedeValidar ? 10 : 9;
 
         int subopcion = -1;
         while (subopcion != opcionSalir) {
@@ -207,8 +207,9 @@ public class Main {
             System.out.println("5. Solicitudes de tutoría");
             System.out.println("6. Chat de tutoría");
             System.out.println("7. Calendario");
+            System.out.println("8. Cambiar contraseña");
             if (puedeValidar) {
-                System.out.println("8. Validar solicitudes de tutor");
+                System.out.println("9. Validar solicitudes de tutor");
             }
             System.out.println(opcionSalir + ". Cerrar sesión");
             System.out.print("Selecciona una opción: ");
@@ -240,7 +241,9 @@ public class Main {
                 menuChatTutoria(sesion);
             } else if (subopcion == 7) {
                 verCalendario(sesion);
-            } else if (puedeValidar && subopcion == 8) {
+            } else if (subopcion == 8) {
+                cambiarContrasena(sesion);
+            } else if (puedeValidar && subopcion == 9) {
                 validarSolicitudesTutor(sesion);
             }
         }
@@ -253,6 +256,10 @@ public class Main {
         String nuevoNombre = sc.nextLine();
         System.out.print("Nueva contraseña: ");
         String nuevaContrasena = sc.nextLine();
+        if (!Seguridad.contrasenaValida(nuevaContrasena)) {
+            System.out.println(Seguridad.requisitosContrasena());
+            return;
+        }
         System.out.print("Nueva foto de perfil: ");
         String nuevaFoto = sc.nextLine();
 
@@ -260,6 +267,22 @@ public class Main {
             System.out.println("Perfil actualizado.");
         } else {
             System.out.println("No se pudo actualizar el perfil.");
+        }
+    }
+
+    private static void cambiarContrasena(Perfil_usuario sesion) {
+        System.out.print("Contraseña actual: ");
+        String actual = sc.nextLine();
+        System.out.print("Nueva contraseña: ");
+        String nueva = sc.nextLine();
+        System.out.print("Confirma la nueva contraseña: ");
+        String confirmacion = sc.nextLine();
+
+        try {
+            Seguridad.cambiarContrasena(sesion, actual, nueva, confirmacion);
+            System.out.println("Contraseña actualizada.");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            System.out.println("No se pudo cambiar la contraseña: " + e.getMessage());
         }
     }
 

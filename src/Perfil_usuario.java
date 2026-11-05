@@ -18,6 +18,8 @@ public class Perfil_usuario {
     private String correoElectronico;
     private String contrasena;
     private String fotoPerfil;
+    private String descripcion;
+    private String banner;
     private TipoUsuario tipoUsuario;
     private EstadoCuenta estadoCuenta;
 
@@ -25,14 +27,17 @@ public class Perfil_usuario {
 
     public Perfil_usuario() {
     }
-
+    
     private Perfil_usuario(int idUsuario, String nombre, String correoElectronico, String contrasena,
-                            String fotoPerfil, TipoUsuario tipoUsuario, EstadoCuenta estadoCuenta) {
+                       String fotoPerfil, String descripcion, String banner,
+                       TipoUsuario tipoUsuario, EstadoCuenta estadoCuenta) {
         this.idUsuario = idUsuario;
         this.nombre = nombre;
         this.correoElectronico = correoElectronico;
         this.contrasena = contrasena;
         this.fotoPerfil = fotoPerfil;
+        this.descripcion = descripcion;
+        this.banner = banner;
         this.tipoUsuario = tipoUsuario;
         this.estadoCuenta = estadoCuenta;
     }
@@ -41,11 +46,17 @@ public class Perfil_usuario {
     public String getNombre() { return nombre; }
     public String getCorreoElectronico() { return correoElectronico; }
     public String getFotoPerfil() { return fotoPerfil; }
+    public String getDescripcion() { return descripcion; }
+    public String getBanner() { return banner; }
     public TipoUsuario getTipoUsuario() { return tipoUsuario; }
     public EstadoCuenta getEstadoCuenta() { return estadoCuenta; }
     public boolean isSesionActiva() { return sesionActiva; }
 
     public static boolean registrarCorreo(String correo, String tipo) {
+        if (!Seguridad.esCorreoInstitucional(correo)) {
+            return false;
+        }
+
         String sql = "INSERT INTO correos_autorizados (correo, tipo) VALUES (?, ?)";
         try (Connection conexion = ConexionDB.conectar();
              PreparedStatement ps = conexion.prepareStatement(sql)) {
@@ -62,7 +73,7 @@ public class Perfil_usuario {
     }
 
     public static boolean verificarCorreo(String correo) {
-        if (correo == null || !correo.toLowerCase().endsWith("@uvg.edu.gt")) {
+        if (!Seguridad.esCorreoInstitucional(correo)) {
             return false;
         }
 
@@ -158,9 +169,18 @@ public class Perfil_usuario {
                 rechazarRegistro();
                 return null;
         }
-
-        Perfil_usuario usuario = new Perfil_usuario(0, nombre, correo.toLowerCase(), contrasena,
-                fotoPerfil, tipo, EstadoCuenta.ACTIVA);
+        
+        Perfil_usuario usuario = new Perfil_usuario(
+            0,
+            nombre,
+            correo.toLowerCase(),
+            contrasena,
+            fotoPerfil,
+            "",
+            "",
+            tipo,
+            EstadoCuenta.ACTIVA
+        );
 
         if (!usuario.guardarEnBD()) {
             return null;
@@ -175,6 +195,10 @@ public class Perfil_usuario {
     }
 
     public static Perfil_usuario iniciarSesion(String correo, String contrasena) {
+        if (!Seguridad.esCorreoInstitucional(correo)) {
+            return null;
+        }
+
         String sql = "SELECT * FROM usuarios WHERE correoElectronico = ? AND contrasena = ?";
         try (Connection conexion = ConexionDB.conectar();
              PreparedStatement ps = conexion.prepareStatement(sql)) {
@@ -194,15 +218,17 @@ public class Perfil_usuario {
                     return null;
                 }
 
-                Perfil_usuario usuario = new Perfil_usuario(
-                        rs.getInt("idUsuario"),
-                        rs.getString("nombre"),
-                        rs.getString("correoElectronico"),
-                        rs.getString("contrasena"),
-                        rs.getString("fotoPerfil"),
-                        TipoUsuario.valueOf(rs.getString("tipoUsuario")),
-                        estado
-                );
+               Perfil_usuario usuario = new Perfil_usuario(
+                    rs.getInt("idUsuario"),
+                    rs.getString("nombre"),
+                    rs.getString("correoElectronico"),
+                    rs.getString("contrasena"),
+                    rs.getString("fotoPerfil"),
+                    rs.getString("descripcion"),
+                    rs.getString("banner"),
+                    TipoUsuario.valueOf(rs.getString("tipoUsuario")),
+                    estado
+               );
                 usuario.sesionActiva = true;
                 return usuario;
             }
@@ -219,13 +245,15 @@ public class Perfil_usuario {
 
     private static Perfil_usuario desdeResultSet(ResultSet rs) throws SQLException {
         return new Perfil_usuario(
-                rs.getInt("idUsuario"),
-                rs.getString("nombre"),
-                rs.getString("correoElectronico"),
-                rs.getString("contrasena"),
-                rs.getString("fotoPerfil"),
-                TipoUsuario.valueOf(rs.getString("tipoUsuario")),
-                EstadoCuenta.valueOf(rs.getString("estadoCuenta"))
+            rs.getInt("idUsuario"),
+            rs.getString("nombre"),
+            rs.getString("correoElectronico"),
+            rs.getString("contrasena"),
+            rs.getString("fotoPerfil"),
+            rs.getString("descripcion"),
+            rs.getString("banner"),
+            TipoUsuario.valueOf(rs.getString("tipoUsuario")),
+            EstadoCuenta.valueOf(rs.getString("estadoCuenta"))
         );
     }
 
@@ -354,6 +382,35 @@ public class Perfil_usuario {
         }
     }
 
+    public boolean actualizarInformacionPerfil(String nuevaDescripcion, String nuevoBanner) {
+
+    String sql = "UPDATE usuarios SET descripcion = ?, banner = ? WHERE idUsuario = ?";
+
+    try (Connection conexion = ConexionDB.conectar();
+         PreparedStatement ps = conexion.prepareStatement(sql)) {
+
+        ps.setString(1, nuevaDescripcion);
+        ps.setString(2, nuevoBanner);
+        ps.setInt(3, this.idUsuario);
+
+        int filas = ps.executeUpdate();
+
+        if (filas > 0) {
+            this.descripcion = nuevaDescripcion;
+            this.banner = nuevoBanner;
+            return true;
+        }
+
+        return false;
+
+    } catch (SQLException e) {
+        System.out.println(
+                "Error al actualizar descripcion y banner: " + e.getMessage()
+        );
+        return false;
+    }
+}
+
     public boolean eliminarPerfil() {
         String sql = "UPDATE usuarios SET estadoCuenta = ? WHERE idUsuario = ?";
         try (Connection conexion = ConexionDB.conectar();
@@ -377,18 +434,21 @@ public class Perfil_usuario {
     }
 
     private boolean guardarEnBD() {
-        String sql = "INSERT INTO usuarios (nombre, correoElectronico, contrasena, fotoPerfil, tipoUsuario, estadoCuenta) "
-                + "VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO usuarios "
+                + "(nombre, correoElectronico, contrasena, fotoPerfil, descripcion, banner, tipoUsuario, estadoCuenta) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conexion = ConexionDB.conectar();
              PreparedStatement ps = conexion.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-
+            
             ps.setString(1, nombre);
             ps.setString(2, correoElectronico);
             ps.setString(3, contrasena);
             ps.setString(4, fotoPerfil);
-            ps.setString(5, tipoUsuario.name());
-            ps.setString(6, estadoCuenta.name());
+            ps.setString(5, descripcion);
+            ps.setString(6, banner);
+            ps.setString(7, tipoUsuario.name());
+            ps.setString(8, estadoCuenta.name());
 
             ps.executeUpdate();
 
