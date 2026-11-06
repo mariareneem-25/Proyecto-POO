@@ -1,16 +1,15 @@
 public abstract class Usuario {
 
-    private String idUsuario;
-    private String nombreCompleto;
-    private String correo;
-    private String contrasenaHash;
-    private String fotoPerfilPath;
+    private final String idUsuario;
+    private final String nombreCompleto;
+    private final String correo;
+    private String fotoPerfilPath ;
 
     public Usuario(String idUsuario, String nombreCompleto, String correo, String contrasenaHash) {
         this.idUsuario = idUsuario;
         this.nombreCompleto = nombreCompleto;
         this.correo = correo;
-        this.contrasenaHash = contrasenaHash;
+    
     }
 
     public String getIdUsuario() {

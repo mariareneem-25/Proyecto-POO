@@ -335,7 +335,7 @@ public class Tutor extends Usuario {
         Perfil_usuario aprobadorAnterior=aprobadoPor; 
         
         estadoSolicitud= nuevoEstado;
-        aprobadorPor= null; 
+        aprobadoPor= null; 
         try{
             new TutorDAO().guardar(this, enviarSolicitud);
         }catch(RuntimeException e){
