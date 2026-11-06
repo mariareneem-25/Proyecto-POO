@@ -53,6 +53,10 @@ public class Perfil_usuario {
     public boolean isSesionActiva() { return sesionActiva; }
 
     public static boolean registrarCorreo(String correo, String tipo) {
+        if (!Seguridad.esCorreoInstitucional(correo)) {
+            return false;
+        }
+
         String sql = "INSERT INTO correos_autorizados (correo, tipo) VALUES (?, ?)";
         try (Connection conexion = ConexionDB.conectar();
              PreparedStatement ps = conexion.prepareStatement(sql)) {
@@ -69,7 +73,7 @@ public class Perfil_usuario {
     }
 
     public static boolean verificarCorreo(String correo) {
-        if (correo == null || !correo.toLowerCase().endsWith("@uvg.edu.gt")) {
+        if (!Seguridad.esCorreoInstitucional(correo)) {
             return false;
         }
 
@@ -191,6 +195,10 @@ public class Perfil_usuario {
     }
 
     public static Perfil_usuario iniciarSesion(String correo, String contrasena) {
+        if (!Seguridad.esCorreoInstitucional(correo)) {
+            return null;
+        }
+
         String sql = "SELECT * FROM usuarios WHERE correoElectronico = ? AND contrasena = ?";
         try (Connection conexion = ConexionDB.conectar();
              PreparedStatement ps = conexion.prepareStatement(sql)) {

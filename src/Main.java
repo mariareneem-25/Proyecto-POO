@@ -1,3 +1,4 @@
+
 import java.io.PrintStream;
 import java.text.Normalizer;
 import java.time.format.DateTimeFormatter;
@@ -257,6 +258,10 @@ public class Main {
         String nuevoNombre = sc.nextLine();
         System.out.print("Nueva contraseña: ");
         String nuevaContrasena = sc.nextLine();
+        if (!Seguridad.contrasenaValida(nuevaContrasena)) {
+            System.out.println(Seguridad.requisitosContrasena());
+            return;
+        }
         System.out.print("Nueva foto de perfil: ");
         String nuevaFoto = sc.nextLine();
 
@@ -264,6 +269,22 @@ public class Main {
             System.out.println("Perfil actualizado.");
         } else {
             System.out.println("No se pudo actualizar el perfil.");
+        }
+    }
+
+    private static void cambiarContrasena(Perfil_usuario sesion) {
+        System.out.print("Contraseña actual: ");
+        String actual = sc.nextLine();
+        System.out.print("Nueva contraseña: ");
+        String nueva = sc.nextLine();
+        System.out.print("Confirma la nueva contraseña: ");
+        String confirmacion = sc.nextLine();
+
+        try {
+            Seguridad.cambiarContrasena(sesion, actual, nueva, confirmacion);
+            System.out.println("Contraseña actualizada.");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            System.out.println("No se pudo cambiar la contraseña: " + e.getMessage());
         }
     }
 

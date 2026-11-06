@@ -47,7 +47,7 @@ public class HabilitarChat {
         }
 
         String fecha = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
-        String sql = "INSERT INTO mensajes (idSolicitud, idEmisor, texto, fecha) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO mensajesTutoria (idSolicitud, idEmisor, texto, fecha) VALUES (?, ?, ?, ?)";
 
         try (Connection conexion = ConexionDB.conectar();
              PreparedStatement ps = conexion.prepareStatement(sql)) {
@@ -68,7 +68,7 @@ public class HabilitarChat {
 
         List<MensajeChat> mensajes = new ArrayList<>();
         String sql = "SELECT m.idMensaje, m.idSolicitud, m.idEmisor, u.nombre, m.texto, m.fecha "
-                + "FROM mensajes m JOIN usuarios u ON u.idUsuario = m.idEmisor "
+                + "FROM mensajesTutoria m JOIN usuarios u ON u.idUsuario = m.idEmisor "
                 + "WHERE m.idSolicitud = ? ORDER BY m.idMensaje";
 
         try (Connection conexion = ConexionDB.conectar();
@@ -102,3 +102,4 @@ public class HabilitarChat {
         }
     }
 }
+ 
