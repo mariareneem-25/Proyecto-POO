@@ -1,5 +1,5 @@
 public enum EstadoSolicitud {
-    BORRADOR,
+    BORRADOR, // guarda el objeto Tutor sin llamar a enviarSolicitud()
     PENDIENTE,
     APROBADO,
     RECHAZADO
