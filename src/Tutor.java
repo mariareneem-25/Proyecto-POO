@@ -17,6 +17,9 @@ public class Tutor extends Usuario {
 
     private final List<String> materiasQueDicta;
     private final List<Horario> horariosDisponibles;
+    private String fotoMismo; //se recibe la ruta o el URL de la imagen del tutor, perfil
+    private String banner; // ruta o url de imgen de portada 
+    private Perfil_usuario aprobadoPor; //usuario de tipo Perfil_Usuario que aprobó o rechazó la solicitud del tutor
 
     // Un tutor nuevo todavía no ha enviado su solicitud.
     public Tutor(
@@ -58,8 +61,11 @@ public class Tutor extends Usuario {
         this.carrera = "";
         this.anualidadCarrera = 0;
         this.presentacion = "";
+        this.fotoMismo = "";
+        this.banner = "";
 
         this.estadoSolicitud = estadoSolicitud;
+        this.aprobadoPor = null;
 
         this.materiasQueDicta = new ArrayList<>();
         this.horariosDisponibles = new ArrayList<>();
@@ -116,13 +122,39 @@ public class Tutor extends Usuario {
                 ? ""
                 : presentacion.trim();
     }
+//se presenta la descripcion y la presentacion del mismo dato
+    public String getDescripcionTutor(){
+        return presentacion;
+    }
+
+    public void setDescriptionTutor(String descripcionTutor)
+    {
+        setPresentacion(descripcionTutor);
+    }
+    public String getFotoMismo() {
+        return fotoMismo;
+    }
+    public void setFotoMismo(String fotoMismo){
+        this.fotoMismo=fotoMismo==null?"":fotoMismo.trim();
+    }
+    public String getBanner() {
+        return banner;
+    } //se recibe la ruta o el URL de la imagen del tutor
 
     public EstadoSolicitud getEstadoSolicitud() {
         return estadoSolicitud;
     }
 
+    public Perfil_usuario getAprobadoPor() {
+        return aprobadoPor;
+    }
+
     public boolean estaActivo() {
         return estadoSolicitud == EstadoSolicitud.APROBADO;
+    }
+    
+    public boolean esBorrador(){
+        return estadoSolicitud == EstadoSolicitud.BORRADOR;
     }
 
     public boolean puedeEditarPerfil() {
@@ -231,6 +263,13 @@ public class Tutor extends Usuario {
         if (presentacion.isBlank()) {
             pendientes.add("presentación del tutor");
         }
+        if (fotoMismo.isBlank()){
+            pendientes.add("foto del Tutor");
+        }
+        if (banner.isBlank()){
+            pendientes.add("banner del Tutor");
+
+        }
 
         if (materiasQueDicta.isEmpty()) {
             pendientes.add("al menos una materia");
@@ -248,10 +287,15 @@ public class Tutor extends Usuario {
     }
 
    
-    public void guardarCambios() {
+    //public void guardarCambios() {
+        //validarEdicionPermitida();
+        //new TutorDAO().guardar(this, false);
+    //}
+    public void guardarCambios(){
         validarEdicionPermitida();
-        new TutorDAO().guardar(this, false);
+        guardarConEstado(EstadoSolicitud.BORRADOR,false);
     }
+
      // Guarda incluso un perfil incompleto.
     // No crea ni envía una solicitud al rector.
 
@@ -268,10 +312,11 @@ public class Tutor extends Usuario {
             );
         }
 
-        new TutorDAO().guardar(this, true);
+        //new TutorDAO().guardar(this, true);
 
         // Cambia el estado solo después de guardar correctamente.
-        estadoSolicitud = EstadoSolicitud.PENDIENTE;
+        //estadoSolicitud = EstadoSolicitud.PENDIENTE;
+        guardarConEstado(EstadoSolicitud.PENDIENTE,true);
     }
 
     // El menú puede pasar aquí la respuesta del usuario.
@@ -283,6 +328,21 @@ public class Tutor extends Usuario {
 
         enviarSolicitud();
         return true;
+    }
+    private void guardarConEstado(EstadoSolicitud nuevoEstado, boolean enviarSolicitud) {
+        
+        EstadoSolicitud estadoAnterior=estadoSolicitud;
+        Perfil_usuario aprobadorAnterior=aprobadoPor; 
+        
+        estadoSolicitud= nuevoEstado;
+        aprobadorPor= null; 
+        try{
+            new TutorDAO().guardar(this, enviarSolicitud);
+        }catch(RuntimeException e){
+            estadoSolicitud=estadoAnterior;
+            aprobadoPor=aprobadorAnterior; 
+            throw e;
+           }
     }
 
     public void aprobarSolicitud(Perfil_usuario rector) {
@@ -308,6 +368,7 @@ public class Tutor extends Usuario {
         }
 
         estadoSolicitud = EstadoSolicitud.APROBADO;
+        aprobadoPor=rector;
     }
 
     public void rechazarSolicitud(Perfil_usuario rector) {
@@ -334,6 +395,7 @@ public class Tutor extends Usuario {
 
         // Después del rechazo puede corregir el perfil y reenviar.
         estadoSolicitud = EstadoSolicitud.RECHAZADO;
+        aprobadoPor=rector;
     }
 
     private void validarEdicionPermitida() {
@@ -375,4 +437,5 @@ public class Tutor extends Usuario {
     public boolean puedeSerAnonimo() {
         return false;
     }
+
 }
