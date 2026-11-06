@@ -79,16 +79,30 @@ public class ConexionDB {
             st.execute(sqlPropuestas);
             st.execute(sqlLogros);
         
-         try { 
+        try { 
           st.execute("ALTER TABLE usuarios ADD COLUMN descripcion TEXT");
-         } catch (SQLException ignored) {
+        } catch (SQLException ignored) {
           
-         }
-         try {
+        }
+        try {
           st.execute("ALTER TABLE usuarios ADD COLUMN banner TEXT");
-         } catch (SQLException ignored) {
+        } catch (SQLException ignored) {
           
-         }
+        }
+
+        // columnas de la solicitud de tutor (informacion que llena el tutor y revision)
+        String[] columnasSolicitudTutor = {
+            "nombreCompleto TEXT", "descripcion TEXT", "materias TEXT",
+            "fotoPerfil TEXT", "banner TEXT", "idRevisor INTEGER", "motivoRechazo TEXT"
+        };
+
+        for (String columna : columnasSolicitudTutor) {
+            try {
+                st.execute("ALTER TABLE solicitudes_tutor ADD COLUMN " + columna);
+            } catch (SQLException ignored) {
+                // la columna ya existe, no hacemos nada
+            }
+        }
  
         } catch (SQLException e) {
             System.out.println("Error al crear las tablas: " + e.getMessage());

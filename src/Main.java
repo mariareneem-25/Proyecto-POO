@@ -127,7 +127,8 @@ public class Main {
         Perfil_usuario.TipoUsuario tipo;
         switch (tipoTexto.toLowerCase()) {
             case "estudiante":
-                tipo = seleccionarRolEstudiante();
+                // si es estudiante, crearUsuario pregunta una sola vez si se registra como estudiante o tutor 
+                tipo = Perfil_usuario.TipoUsuario.ESTUDIANTE;       
                 break;
             case "director":
                 tipo = Perfil_usuario.TipoUsuario.DIRECTOR;
@@ -186,6 +187,14 @@ public class Main {
         }
 
         System.out.println("Sesión iniciada como: " + sesion.getNombre());
+        // un tutor solo entra al menu cuando su solicitud de tutor ha sido aprobada
+        // de lo contrario llena o corrige su solicitud y vuelve al menu de inicio
+        if (sesion.getTipoUsuario() == Perfil_usuario.TipoUsuario.TUTOR
+                && !new SolicitudTutorConsola(sc).gestionarAcceso(sesion)) {
+            sesion.cerrarSesion();
+            return;
+        
+        }
 
         // se convierte la sesión a un Usuario real (Estudiante/Tutor) una sola vez
         Usuario usuarioActual = AdaptadorUsuario.convertir(sesion);
@@ -293,46 +302,7 @@ public class Main {
     // ---------------------------------------------------------------
 
     private static void validarSolicitudesTutor(Perfil_usuario validador) {
-        List<Perfil_usuario> pendientes = Perfil_usuario.listarTutoresPendientes();
-
-        if (pendientes.isEmpty()) {
-            System.out.println("No hay solicitudes de tutor pendientes.");
-            return;
-        }
-
-        System.out.println("\nSolicitudes de tutor pendientes:");
-        for (int i = 0; i < pendientes.size(); i++) {
-            Perfil_usuario p = pendientes.get(i);
-            System.out.println((i + 1) + ". " + p.getNombre() + " <" + p.getCorreoElectronico() + ">");
-        }
-
-        int eleccion = leerEntero("Selecciona una solicitud (0 para volver): ");
-        if (eleccion < 1 || eleccion > pendientes.size()) {
-            return;
-        }
-
-        Perfil_usuario tutor = pendientes.get(eleccion - 1);
-
-        System.out.println("\n1. Aprobar");
-        System.out.println("2. Rechazar");
-        System.out.println("3. Cancelar");
-        int decision = leerEntero("Selecciona una opción: ");
-
-        if (decision == 1) {
-            if (Perfil_usuario.guardarEstadoSolicitudTutor(
-                    tutor.getIdUsuario(), EstadoSolicitud.APROBADO, validador.getIdUsuario())) {
-                System.out.println("Solicitud aprobada.");
-            } else {
-                System.out.println("No se pudo guardar la decisión.");
-            }
-        } else if (decision == 2) {
-            if (Perfil_usuario.guardarEstadoSolicitudTutor(
-                    tutor.getIdUsuario(), EstadoSolicitud.RECHAZADO, validador.getIdUsuario())) {
-                System.out.println("Solicitud rechazada.");
-            } else {
-                System.out.println("No se pudo guardar la decisión.");
-            }
-        }
+        new SolicitudTutorConsola(sc).revisarSolicitudes(validador);
     }
 
     // ---------------------------------------------------------------
