@@ -1,6 +1,6 @@
 public enum EstadoSolicitud {
-    BORRADOR, // guarda el objeto Tutor sin llamar a enviarSolicitud()
     PENDIENTE,
     APROBADO,
-    RECHAZADO
+    RECHAZADO,
+    BORRADOR        // solo para la solicitud de tutor: se guardan los datos de la socitud pero no se envian todavia
 }

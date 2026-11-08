@@ -1,4 +1,5 @@
 bin/
+lib/
 *.db
 .vscode/
 archivos_subidos/
