@@ -357,6 +357,18 @@ public class Perfil_usuario {
         this.sesionActiva = false;
     }
 
+    //actualizan un solo dato y deja los demas como estaban 
+
+    public boolean actualizarSoloNombre(String nuevoNombre) {
+       return actualizarPerfil(nuevoNombre, this.contrasena, this.fotoPerfil);
+    }
+    public boolean actualizarSoloContrasena(String nuevaContrasena) {
+        return actualizarPerfil(this.nombre, nuevaContrasena, this.fotoPerfil);
+    }
+    public boolean actualizarSoloFoto(String nuevaFotoPerfil) {
+        return actualizarPerfil(this.nombre, this.contrasena, nuevaFotoPerfil);
+    }
+
     public boolean actualizarPerfil(String nuevoNombre, String nuevaContrasena, String nuevaFotoPerfil) {
         String sql = "UPDATE usuarios SET nombre = ?, contrasena = ?, fotoPerfil = ? WHERE idUsuario = ?";
         try (Connection conexion = ConexionDB.conectar();
@@ -429,6 +441,56 @@ public class Perfil_usuario {
 
         } catch (SQLException e) {
             System.out.println("Error al eliminar el perfil: " + e.getMessage());
+            return false;
+        }
+    }
+
+    // vuelve a activar una cuenta que el usuario elimino 
+    // pide el correo y la contrasena 
+    // una cuenta SUSPENDIDA no se puede reactivar desde aqui
+
+    public static boolean reactivarCuenta(String correo, String contrasena) {
+        if (!Seguridad.esCorreoInstitucional(correo)) {
+            System.out.println("Correo o contraseña incorrectos.");
+            return false;
+        }
+
+        String consulta = "SELECT idUsuario, estadoCuenta FROM usuarios WHERE correoElectronico = ? AND contrasena = ?";
+        try (Connection conexion = ConexionDB.conectar();
+             PreparedStatement ps = conexion.prepareStatement(consulta)) {
+
+            ps.setString(1, correo.toLowerCase());
+            ps.setString(2, contrasena);
+
+            int idUsuario;
+            EstadoCuenta estado;
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    System.out.println("Correo o contraseña incorrectos.");
+                    return false;
+                }
+                idUsuario = rs.getInt("idUsuario");
+                estado = EstadoCuenta.valueOf(rs.getString("estadoCuenta"));
+            }
+
+            if (estado == EstadoCuenta.ACTIVA) {
+                System.out.println("Tu cuenta ya está activa. Puedes iniciar sesión.");
+                return false;
+            }
+            if (estado == EstadoCuenta.SUSPENDIDA) {
+                System.out.println("Tu cuenta está suspendida y no se puede reactivar desde aquí.");
+                return false;
+            }
+
+            String actualizar = "UPDATE usuarios SET estadoCuenta = ? WHERE idUsuario = ?";
+            try (PreparedStatement ps2 = conexion.prepareStatement(actualizar)) {
+                ps2.setString(1, EstadoCuenta.ACTIVA.name());
+                ps2.setInt(2, idUsuario);
+                return ps2.executeUpdate() > 0;
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Error al reactivar la cuenta: " + e.getMessage());
             return false;
         }
     }

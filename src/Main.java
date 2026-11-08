@@ -47,12 +47,13 @@ public class Main {
     private static void iniciarMenu() {
         int opcion = -1;
 
-        while (opcion != 4) {
+        while (opcion != 5) {
             System.out.println("\n=== Menú ===");
             System.out.println("1. Agregar correo autorizado");
             System.out.println("2. Registrarse");
             System.out.println("3. Iniciar sesión");
-            System.out.println("4. Salir");
+            System.out.println("4. Reactivar cuenta");
+            System.out.println("5. Salir");
             System.out.print("Selecciona una opción: ");
 
             if (sc.hasNextInt()) {
@@ -69,6 +70,8 @@ public class Main {
                 registrar();
             } else if (opcion == 3) {
                 iniciarSesion();
+            } else if (opcion == 4) {
+                new PerfilConsola(sc).reactivar();
             }
         }
 
@@ -232,12 +235,10 @@ public class Main {
                     actualizarPerfil(sesion);
                     break;
                 case MenuPrincipal.ELIMINAR_PERFIL:
-                    if (sesion.eliminarPerfil()) {
-                        System.out.println("Perfil eliminado.");
-                    } else {
-                        System.out.println("No se pudo eliminar el perfil.");
+                    // si la persona cancela, sigue en el menu
+                    if (new PerfilConsola(sc).eliminar(sesion)) {
+                        salir = true;
                     }
-                    salir = true;
                     break;
                 case MenuPrincipal.FORO:
                     menuForo(usuarioActual);
@@ -263,22 +264,7 @@ public class Main {
     }
 
     private static void actualizarPerfil(Perfil_usuario sesion) {
-        System.out.print("Nuevo nombre: ");
-        String nuevoNombre = sc.nextLine();
-        System.out.print("Nueva contraseña: ");
-        String nuevaContrasena = sc.nextLine();
-        if (!Seguridad.contrasenaValida(nuevaContrasena)) {
-            System.out.println(Seguridad.requisitosContrasena());
-            return;
-        }
-        System.out.print("Nueva foto de perfil: ");
-        String nuevaFoto = sc.nextLine();
-
-        if (sesion.actualizarPerfil(nuevoNombre, nuevaContrasena, nuevaFoto)) {
-            System.out.println("Perfil actualizado.");
-        } else {
-            System.out.println("No se pudo actualizar el perfil.");
-        }
+        new PerfilConsola(sc).actualizar(sesion);
     }
 
     private static void cambiarContrasena(Perfil_usuario sesion) {
