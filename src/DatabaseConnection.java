@@ -16,12 +16,15 @@ public class DatabaseConnection {
     public static Connection getConnection() {
         try {
             if (connection == null || connection.isClosed()) {
+                Class.forName("org.sqlite.JDBC");
                 connection = DriverManager.getConnection(URL);
                 connection.createStatement().execute("PRAGMA foreign_keys = ON");
                 crearTablas(connection);
             }
         } catch (SQLException e) {
             throw new RuntimeException("No se pudo conectar a la base de datos SQLite", e);
+        } catch (Exception e) {
+            System.out.println("class missing: " + e);
         }
         return connection;
     }
