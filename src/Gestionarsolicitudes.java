@@ -18,7 +18,7 @@ public class Gestionarsolicitudes {
         }
 
         List<String> tutores = new ArrayList<>();
-        String sql = "SELECT idUsuario, nombre FROM usuarios WHERE tipoUsuario = 'TUTOR' AND estadoCuenta = 'ACTIVA'";
+        String sql = "SELECT idUsuario, nombre FROM usuarios WHERE tipoUsuario = 'TUTOR' AND estadoCuenta = 'ACTIVA' AND EXISTS (SELECT 1 FROM solicitudes_tutor st WHERE st.idTutor = usuarios.idUsuario AND st.estado = 'APROBADO')";
 
         try (Connection conexion = ConexionDB.conectar();
              PreparedStatement ps = conexion.prepareStatement(sql);
@@ -49,7 +49,7 @@ public class Gestionarsolicitudes {
         }
 
         if (!ConexionDB.existe("SELECT 1 FROM usuarios WHERE idUsuario = ? AND tipoUsuario = 'TUTOR' "
-                + "AND estadoCuenta = 'ACTIVA'", idTutor)) {
+                + "AND estadoCuenta = 'ACTIVA' AND EXISTS (SELECT 1 FROM solicitudes_tutor st WHERE st.idTutor = usuarios.idUsuario AND st.estado = 'APROBADO')", idTutor)) {
             throw new IllegalArgumentException("El tutor indicado no existe.");
         }
 

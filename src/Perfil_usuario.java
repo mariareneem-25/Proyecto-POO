@@ -2,6 +2,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
+import java.util.Locale;
 
 public class Perfil_usuario {
 
@@ -52,129 +53,60 @@ public class Perfil_usuario {
     public EstadoCuenta getEstadoCuenta() { return estadoCuenta; }
     public boolean isSesionActiva() { return sesionActiva; }
 
-    public static boolean registrarCorreo(String correo, String tipo) {
-        if (!Seguridad.esCorreoInstitucional(correo)) {
-            return false;
-        }
-
-        String sql = "INSERT INTO correos_autorizados (correo, tipo) VALUES (?, ?)";
-        try (Connection conexion = ConexionDB.conectar();
-             PreparedStatement ps = conexion.prepareStatement(sql)) {
-
-            ps.setString(1, correo.toLowerCase());
-            ps.setString(2, tipo.toLowerCase());
-            ps.executeUpdate();
-            return true;
-
-        } catch (SQLException e) {
-            System.out.println("Error al registrar correo: " + e.getMessage());
-            return false;
-        }
-    }
+    
 
     public static boolean verificarCorreo(String correo) {
-        if (!Seguridad.esCorreoInstitucional(correo)) {
-            return false;
-        }
-
-        String sqlAutorizado = "SELECT 1 FROM correos_autorizados WHERE correo = ?";
-        String sqlYaUsado = "SELECT 1 FROM usuarios WHERE correoElectronico = ?";
-        
-        try (Connection conexion = ConexionDB.conectar()) {
-
-            try (PreparedStatement ps = conexion.prepareStatement(sqlAutorizado)) {
-                ps.setString(1, correo.toLowerCase());
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (!rs.next()) return false;
-                }
+        if (!Seguridad.esCorreoInstitucional(correo)) return false;
+        String sql = "SELECT 1 FROM usuarios WHERE lower(correoElectronico) = ?";
+        try (Connection conexion = ConexionDB.conectar();
+             PreparedStatement ps = conexion.prepareStatement(sql)) {
+            ps.setString(1, correo.trim().toLowerCase(Locale.ROOT));
+            try (ResultSet rs = ps.executeQuery()) {
+                return !rs.next();
             }
-
-            try (PreparedStatement ps = conexion.prepareStatement(sqlYaUsado)) {
-                ps.setString(1, correo.toLowerCase());
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) return false;
-                }
-            }
-
-            return true;
-
         } catch (SQLException e) {
             System.out.println("Error al verificar correo: " + e.getMessage());
             return false;
         }
     }
 
-    public static String obtenerTipoUsuario(String correo) {
-        String sql = "SELECT tipo FROM correos_autorizados WHERE correo = ?";
-        try (Connection conexion = ConexionDB.conectar();
-             PreparedStatement ps = conexion.prepareStatement(sql)) {
+    
 
-            ps.setString(1, correo.toLowerCase());
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getString("tipo");
-                }
-            }
-        } catch (SQLException e) {
-            System.out.println("Error al obtener el tipo de usuario: " + e.getMessage());
-        }
-        return null;
-    }
-
-    public static TipoUsuario seleccionarRolEstudiante() {
-        Scanner sc = new Scanner(System.in);
+    public static TipoUsuario seleccionarRolEstudiante(Scanner sc) {
         int opcion = -1;
-
         while (opcion != 1 && opcion != 2) {
-            System.out.println("Tu correo corresponde a un estudiante. ¿Cómo deseas registrarte?");
             System.out.println("1. Estudiante (solicita tutorías)");
             System.out.println("2. Tutor (brinda tutorías)");
             System.out.print("Selecciona una opción: ");
-
-            if (sc.hasNextInt()) {
-                opcion = sc.nextInt();
-            } else {
-                sc.next();
-            }
+            try { opcion = Integer.parseInt(sc.nextLine().trim()); }
+            catch (NumberFormatException e) { opcion = -1; }
         }
-
-        return (opcion == 2) ? TipoUsuario.TUTOR : TipoUsuario.ESTUDIANTE;
+        return opcion == 2 ? TipoUsuario.TUTOR : TipoUsuario.ESTUDIANTE;
     }
 
-    public static Perfil_usuario crearUsuario(String nombre, String correo, String contrasena, String fotoPerfil) {
+    public static Perfil_usuario crearUsuario(String nombre, String correo, String contrasena, String fotoPerfil, TipoUsuario rolElegido) {
 
         if (!verificarCorreo(correo)) {
             rechazarRegistro();
             return null;
         }
 
-        String tipoTexto = obtenerTipoUsuario(correo);
-        if (tipoTexto == null) {
+        // El registro público solo permite estudiante o tutor.
+        if (rolElegido != TipoUsuario.ESTUDIANTE && rolElegido != TipoUsuario.TUTOR) {
             rechazarRegistro();
             return null;
         }
+        TipoUsuario tipo = rolElegido;
 
-        TipoUsuario tipo;
-        switch (tipoTexto.toLowerCase()) {
-            case "estudiante":
-                tipo = seleccionarRolEstudiante();
-                break;
-            case "director":
-                tipo = TipoUsuario.DIRECTOR;
-                break;
-            case "docente":
-                tipo = TipoUsuario.DOCENTE;
-                break;
-            default:
-                rechazarRegistro();
-                return null;
+        if (!Seguridad.contrasenaValida(contrasena)) {
+            System.out.println(Seguridad.requisitosContrasena());
+            return null;
         }
-        
         Perfil_usuario usuario = new Perfil_usuario(
             0,
             nombre,
-            correo.toLowerCase(),
-            contrasena,
+            correo.trim().toLowerCase(Locale.ROOT),
+            Seguridad.hashContrasena(contrasena),
             fotoPerfil,
             "",
             "",
@@ -189,22 +121,18 @@ public class Perfil_usuario {
         return usuario;
     }
 
-    public static void rechazarRegistro() {
-        System.out.println("Registro rechazado: el correo ingresado no pertenece al dominio institucional uvg, "
-                + "no se encuentra autorizado o ya fue utilizado para crear una cuenta.");
-    }
+    public static void rechazarRegistro() { System.out.println("Registro rechazado: utiliza un correo @uvg.edu.gt que no esté registrado."); }
 
     public static Perfil_usuario iniciarSesion(String correo, String contrasena) {
         if (!Seguridad.esCorreoInstitucional(correo)) {
             return null;
         }
 
-        String sql = "SELECT * FROM usuarios WHERE correoElectronico = ? AND contrasena = ?";
+        String sql = "SELECT * FROM usuarios WHERE correoElectronico = ?";
         try (Connection conexion = ConexionDB.conectar();
              PreparedStatement ps = conexion.prepareStatement(sql)) {
 
-            ps.setString(1, correo.toLowerCase());
-            ps.setString(2, contrasena);
+            ps.setString(1, correo.trim().toLowerCase(Locale.ROOT));
 
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) {
@@ -212,6 +140,11 @@ public class Perfil_usuario {
                     return null;
                 }
 
+                String guardada = rs.getString("contrasena");
+                if (!Seguridad.verificarContrasena(contrasena, guardada)) {
+                    System.out.println("Correo o contraseña incorrectos.");
+                    return null;
+                }
                 EstadoCuenta estado = EstadoCuenta.valueOf(rs.getString("estadoCuenta"));
                 if (estado != EstadoCuenta.ACTIVA) {
                     System.out.println("La cuenta no está activa (estado: " + estado + ").");
@@ -360,29 +293,29 @@ public class Perfil_usuario {
     //actualizan un solo dato y deja los demas como estaban 
 
     public boolean actualizarSoloNombre(String nuevoNombre) {
-       return actualizarPerfil(nuevoNombre, this.contrasena, this.fotoPerfil);
+       return actualizarPerfil(nuevoNombre, null, this.fotoPerfil);
     }
     public boolean actualizarSoloContrasena(String nuevaContrasena) {
         return actualizarPerfil(this.nombre, nuevaContrasena, this.fotoPerfil);
     }
     public boolean actualizarSoloFoto(String nuevaFotoPerfil) {
-        return actualizarPerfil(this.nombre, this.contrasena, nuevaFotoPerfil);
+        return actualizarPerfil(this.nombre, null, nuevaFotoPerfil);
     }
 
     public boolean actualizarPerfil(String nuevoNombre, String nuevaContrasena, String nuevaFotoPerfil) {
-        String sql = "UPDATE usuarios SET nombre = ?, contrasena = ?, fotoPerfil = ? WHERE idUsuario = ?";
+        String sql = "UPDATE usuarios SET nombre = ?, contrasena = COALESCE(?, contrasena), fotoPerfil = ? WHERE idUsuario = ?";
         try (Connection conexion = ConexionDB.conectar();
              PreparedStatement ps = conexion.prepareStatement(sql)) {
 
             ps.setString(1, nuevoNombre);
-            ps.setString(2, nuevaContrasena);
+            ps.setString(2, nuevaContrasena == null ? null : Seguridad.hashContrasena(nuevaContrasena));
             ps.setString(3, nuevaFotoPerfil);
             ps.setInt(4, this.idUsuario);
 
             int filas = ps.executeUpdate();
             if (filas > 0) {
                 this.nombre = nuevoNombre;
-                this.contrasena = nuevaContrasena;
+                this.contrasena = "[protegida]";
                 this.fotoPerfil = nuevaFotoPerfil;
                 return true;
             }
@@ -455,17 +388,16 @@ public class Perfil_usuario {
             return false;
         }
 
-        String consulta = "SELECT idUsuario, estadoCuenta FROM usuarios WHERE correoElectronico = ? AND contrasena = ?";
+        String consulta = "SELECT idUsuario, estadoCuenta, contrasena FROM usuarios WHERE correoElectronico = ?";
         try (Connection conexion = ConexionDB.conectar();
              PreparedStatement ps = conexion.prepareStatement(consulta)) {
 
-            ps.setString(1, correo.toLowerCase());
-            ps.setString(2, contrasena);
-
+            ps.setString(1, correo.trim().toLowerCase(Locale.ROOT));
+            
             int idUsuario;
             EstadoCuenta estado;
             try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) {
+                if (!rs.next() || !Seguridad.verificarContrasena(contrasena, rs.getString("contrasena"))) {
                     System.out.println("Correo o contraseña incorrectos.");
                     return false;
                 }

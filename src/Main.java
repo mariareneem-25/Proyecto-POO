@@ -37,9 +37,7 @@ public class Main {
         });
 
         ConexionDB.crearTablas();
-        Perfil_usuario.registrarCorreo("estudiante1@uvg.edu.gt", "estudiante");
-        Perfil_usuario.registrarCorreo("director1@uvg.edu.gt", "director");
-        Perfil_usuario.registrarCorreo("docente1@uvg.edu.gt", "docente");
+        Seguridad.migrarContrasenasAntiguas();
 
         iniciarMenu();
     }
@@ -47,13 +45,12 @@ public class Main {
     private static void iniciarMenu() {
         int opcion = -1;
 
-        while (opcion != 5) {
+        while (opcion != 4) {
             System.out.println("\n=== Menú ===");
-            System.out.println("1. Agregar correo autorizado");
-            System.out.println("2. Registrarse");
-            System.out.println("3. Iniciar sesión");
-            System.out.println("4. Reactivar cuenta");
-            System.out.println("5. Salir");
+            System.out.println("1. Registrarse");
+            System.out.println("2. Iniciar sesión");
+            System.out.println("3. Reactivar cuenta");
+            System.out.println("4. Salir");
             System.out.print("Selecciona una opción: ");
 
             if (sc.hasNextInt()) {
@@ -65,12 +62,10 @@ public class Main {
             sc.nextLine();
 
             if (opcion == 1) {
-                agregarCorreoAutorizado();
-            } else if (opcion == 2) {
                 registrar();
-            } else if (opcion == 3) {
+            } else if (opcion == 2) {
                 iniciarSesion();
-            } else if (opcion == 4) {
+            } else if (opcion == 3) {
                 new PerfilConsola(sc).reactivar();
             }
         }
@@ -88,64 +83,27 @@ public class Main {
         }
     }
 
-    private static void agregarCorreoAutorizado() {
-        System.out.print("Correo a autorizar: ");
-        String correo = sc.nextLine();
-
-        System.out.println("Tipo de usuario (estudiante / docente / director): ");
-        String tipo = sc.nextLine();
-
-        if (Perfil_usuario.registrarCorreo(correo, tipo)) {
-            System.out.println("Correo autorizado correctamente.");
-        } else {
-            System.out.println("No se pudo autorizar el correo (puede que ya exista).");
-        }
-    }
+    
 
     private static void registrar() {
         System.out.print("Nombre: ");
         String nombre = sc.nextLine();
-
         System.out.print("Correo institucional: ");
         String correo = sc.nextLine();
-
         System.out.print("Contraseña: ");
         String contrasena = sc.nextLine();
-
         System.out.print("Foto de perfil (ruta o nombre de archivo): ");
         String fotoPerfil = sc.nextLine();
-
         if (!Perfil_usuario.verificarCorreo(correo)) {
-            System.out.println("Registro rechazado: el correo no pertenece al dominio institucional, "
-                    + "no está autorizado o ya fue utilizado para crear una cuenta.");
+            System.out.println("Registro rechazado: utiliza un correo @uvg.edu.gt que no esté registrado.");
             return;
         }
-
-        String tipoTexto = Perfil_usuario.obtenerTipoUsuario(correo);
-        if (tipoTexto == null) {
-            System.out.println("Registro rechazado: no se encontró el tipo de usuario para este correo.");
+        if (!Seguridad.contrasenaValida(contrasena)) {
+            System.out.println(Seguridad.requisitosContrasena());
             return;
         }
-
-        Perfil_usuario.TipoUsuario tipo;
-        switch (tipoTexto.toLowerCase()) {
-            case "estudiante":
-                // si es estudiante, crearUsuario pregunta una sola vez si se registra como estudiante o tutor 
-                tipo = Perfil_usuario.TipoUsuario.ESTUDIANTE;       
-                break;
-            case "director":
-                tipo = Perfil_usuario.TipoUsuario.DIRECTOR;
-                break;
-            case "docente":
-                tipo = Perfil_usuario.TipoUsuario.DOCENTE;
-                break;
-            default:
-                System.out.println("Registro rechazado: tipo de usuario no reconocido.");
-                return;
-        }
-
-        Perfil_usuario usuario = Perfil_usuario.crearUsuario(nombre, correo, contrasena, fotoPerfil);
-
+        Perfil_usuario.TipoUsuario tipo = Perfil_usuario.seleccionarRolEstudiante(sc);
+        Perfil_usuario usuario = Perfil_usuario.crearUsuario(nombre, correo, contrasena, fotoPerfil, tipo);
         if (usuario != null) {
             System.out.println("Cuenta creada correctamente:");
             System.out.println(usuario);
@@ -154,26 +112,7 @@ public class Main {
         }
     }
 
-    private static Perfil_usuario.TipoUsuario seleccionarRolEstudiante() {
-        int opcion = -1;
-
-        while (opcion != 1 && opcion != 2) {
-            System.out.println("Tu correo corresponde a un estudiante. ¿Cómo deseas registrarte?");
-            System.out.println("1. Estudiante (solicita tutorías)");
-            System.out.println("2. Tutor (brinda tutorías)");
-            System.out.print("Selecciona una opción: ");
-
-            if (sc.hasNextInt()) {
-                opcion = sc.nextInt();
-            } else {
-                sc.next();
-                continue;
-            }
-            sc.nextLine();
-        }
-
-        return (opcion == 2) ? Perfil_usuario.TipoUsuario.TUTOR : Perfil_usuario.TipoUsuario.ESTUDIANTE;
-    }
+    
 
     private static void iniciarSesion() {
         System.out.print("Correo: ");
@@ -630,7 +569,7 @@ public class Main {
     private static void menuSolicitudesTutor(Perfil_usuario sesion) {
         int opcion = -1;
 
-        while (opcion != 5) {
+        while (opcion != 4) {
             System.out.println("\n--- Solicitudes de tutoría (tutor) ---");
             System.out.println("1. Ver solicitudes pendientes");
             System.out.println("2. Consultar una solicitud");
