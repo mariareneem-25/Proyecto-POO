@@ -113,6 +113,54 @@ public class GestionarCalendario {
         return obtenerReservadas(usuario, usuario.getIdUsuario());
     }
 
+    public void agregarFechaPersonal(Perfil_usuario usuario,
+                                 String textoFecha,
+                                 String tipo) {
+
+    if (!acceso.puedeUsarCalendario(usuario)) {
+        throw new IllegalStateException(
+                "Tu tipo de cuenta no puede editar el calendario.");
+    }
+
+    LocalDateTime fecha = convertirFecha(textoFecha);
+
+    if (!fecha.isAfter(LocalDateTime.now())) {
+        throw new IllegalArgumentException(
+                "La fecha debe ser futura.");
+    }
+
+    if (tipo == null) {
+        throw new IllegalArgumentException(
+                "Debes indicar el tipo de fecha.");
+    }
+
+    String tipoNormalizado = tipo.trim().toUpperCase();
+
+    if (!tipoNormalizado.equals("OCUPADO")
+            && !tipoNormalizado.equals("PREFERENCIA")) {
+        throw new IllegalArgumentException(
+                "El tipo debe ser OCUPADO o PREFERENCIA.");
+    }
+
+    String sql = "INSERT INTO calendario_personal "
+            + "(idUsuario, fechaHora, tipo) VALUES (?, ?, ?)";
+
+    try (Connection conexion = ConexionDB.conectar();
+         PreparedStatement ps = conexion.prepareStatement(sql)) {
+
+        ps.setInt(1, usuario.getIdUsuario());
+        ps.setString(2, fecha.format(PropuestaFecha.FORMATO));
+        ps.setString(3, tipoNormalizado);
+
+        ps.executeUpdate();
+
+    } catch (SQLException e) {
+        throw new IllegalStateException(
+                "No se pudo guardar la fecha en el calendario: "
+                        + e.getMessage());
+    }
+}
+
     private LocalDateTime convertirFecha(String textoFecha) {
         if (textoFecha == null) {
             throw new IllegalArgumentException("La fecha es obligatoria.");
