@@ -1,11 +1,11 @@
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
 // pantallas de consola para cuidar la cuenta: actualizar perfil, eliminar perfil y reactivar cuenta
 // Main solo la crea y llama a actualizar(), eliminar() o reactivar()
 
 public class PerfilConsola {
-
-    private static final String PALABRA_CONFIRMACION = "ELIMINAR";
 
     private final Scanner sc;
 
@@ -17,25 +17,136 @@ public class PerfilConsola {
     // Actualizar perfil: se elige qué dato cambiar
     // ---------------------------------------------------------------
 
-    public void actualizar(Perfil_usuario sesion) {
-        int opcion = -1;
+    // devuelve true si la sesión terminó (por ejemplo, al cambiar de rol hay que volver a iniciar sesión)
 
-        while (opcion != 4) {
+    public boolean actualizar(Perfil_usuario sesion) {
+        boolean esEstudiante = sesion.getTipoUsuario() == Perfil_usuario.TipoUsuario.ESTUDIANTE;
+        boolean esTutor = sesion.getTipoUsuario() == Perfil_usuario.TipoUsuario.TUTOR;
+
+        // el menú se arma según el tipo de cuenta
+        List<String> opciones = new ArrayList<>();
+        opciones.add("Nombre");
+        opciones.add("Contraseña");
+        opciones.add("Foto de perfil");
+        if (esEstudiante || esTutor) {
+            opciones.add("Calendario");
+        }
+        if (esEstudiante) {
+            opciones.add("Cambiar a cuenta de tutor");
+        }
+        if (esTutor) {
+            opciones.add("Cambiar a cuenta de estudiante");
+        }
+        opciones.add("Volver");
+
+        while (true) {
             System.out.println("\n--- Actualizar perfil ---");
-            System.out.println("1. Nombre (actual: " + valor(sesion.getNombre()) + ")");
-            System.out.println("2. Contraseña");
-            System.out.println("3. Foto de perfil (actual: " + valor(sesion.getFotoPerfil()) + ")");
-            System.out.println("4. Volver");
-            opcion = leerEntero("¿Qué quieres cambiar?: ");
+            for (int i = 0; i < opciones.size(); i++) {
+                String texto = opciones.get(i);
+                if (texto.equals("Nombre")) {
+                    texto += " (actual: " + valor(sesion.getNombre()) + ")";
+                } else if (texto.equals("Foto de perfil")) {
+                    texto += " (actual: " + valor(sesion.getFotoPerfil()) + ")";
+                }
+                System.out.println((i + 1) + ". " + texto);
+            }
 
-            if (opcion == 1) {
-                cambiarNombre(sesion);
-            } else if (opcion == 2) {
-                cambiarContrasena(sesion);
-            } else if (opcion == 3) {
-                cambiarFoto(sesion);
+            int eleccion = leerEntero("¿Qué quieres cambiar?: ");
+            if (eleccion < 1 || eleccion > opciones.size()) {
+                continue;
+            }
+
+            switch (opciones.get(eleccion - 1)) {
+                case "Nombre":
+                    cambiarNombre(sesion);
+                    break;
+                case "Contraseña":
+                    cambiarContrasena(sesion);
+                    break;
+                case "Foto de perfil":
+                    cambiarFoto(sesion);
+                    break;
+                case "Calendario":
+                    new CalendarioConsola(sc).editar(sesion);
+                    break;
+                case "Cambiar a cuenta de tutor":
+                    if (cambiarATutor(sesion)) {
+                        return true;
+                    }
+                    break;
+                case "Cambiar a cuenta de estudiante":
+                    if (cambiarAEstudiante(sesion)) {
+                        return true;
+                    }
+                    break;
+                default:
+                    return false;
             }
         }
+    }
+
+    // ---------------------------------------------------------------
+    // Cambio de rol: estudiante -> tutor y tutor -> estudiante (siempre con doble confirmación)
+    // ---------------------------------------------------------------
+
+    private boolean cambiarATutor(Perfil_usuario sesion) {
+        System.out.println("\n--- Cambiar a cuenta de tutor ---");
+        System.out.println("Para ser tutor necesitas:");
+        System.out.println("  - Nombre completo, descripción, materias que impartes, foto de perfil y banner.");
+        System.out.println("  - Enviar tu solicitud a un docente o director de carrera, que debe aprobarla.");
+        System.out.println("Qué pasará con tu cuenta:");
+        System.out.println("  - Mientras no te aprueben, no podrás entrar al menú.");
+        System.out.println("  - Se cerrarán tus solicitudes de tutoría y reservas como estudiante.");
+        System.out.println("  - Dejarás de buscar tutores; en su lugar recibirás solicitudes de estudiantes.");
+        System.out.println("  - Podrás volver a ser estudiante desde Actualizar perfil.");
+
+        if (!confirmar("\n¿Quieres continuar? (s/n): ")
+                || !confirmar("Confirmación final: ¿cambiar tu cuenta a tutor? (s/n): ")) {
+            System.out.println("Cambio cancelado. Tu cuenta sigue igual.");
+            return false;
+        }
+
+        try {
+            CambioRol.aTutor(sesion.getIdUsuario());
+        } catch (RuntimeException e) {
+            System.out.println(e.getMessage());
+            return false;
+        }
+
+        System.out.println("Tu cuenta ahora es de tutor. Completa tu información para enviar tu solicitud.");
+        new SolicitudTutorConsola(sc).gestionarAcceso(sesion);
+        System.out.println("Vuelve a iniciar sesión cuando quieras continuar.");
+        return true;
+    }
+
+    private boolean cambiarAEstudiante(Perfil_usuario sesion) {
+        System.out.println("\n--- Cambiar a cuenta de estudiante ---");
+        System.out.println("Qué pasará con tu cuenta:");
+        System.out.println("  - Tu información de tutor se borrará: solicitud, materias, descripción y banner.");
+        System.out.println("  - Se cerrarán tus tutorías, reservas y solicitudes con estudiantes.");
+        System.out.println("  - Para volver a ser tutor tendrás que enviar una nueva solicitud y esperar aprobación.");
+        System.out.println("  - Tu nombre, contraseña y foto de perfil se conservan.");
+
+        if (!confirmar("\n¿Quieres continuar? (s/n): ")
+                || !confirmar("Confirmación final: ¿cambiar tu cuenta a estudiante y borrar tu información de tutor? (s/n): ")) {
+            System.out.println("Cambio cancelado. Tu cuenta sigue igual.");
+            return false;
+        }
+
+        try {
+            CambioRol.aEstudiante(sesion.getIdUsuario());
+        } catch (RuntimeException e) {
+            System.out.println(e.getMessage());
+            return false;
+        }
+
+        System.out.println("Tu cuenta ahora es de estudiante. Vuelve a iniciar sesión para continuar.");
+        return true;
+    }
+
+    private boolean confirmar(String pregunta) {
+        System.out.print(pregunta);
+        return sc.nextLine().trim().equalsIgnoreCase("s");
     }
 
     private void cambiarNombre(Perfil_usuario sesion) {
@@ -96,11 +207,9 @@ public class PerfilConsola {
         System.out.println("  - Tu información no se borra: solo cambia el estado de la cuenta.");
         System.out.println("Cómo reactivarla:");
         System.out.println("  - En el menú de inicio elige \"Reactivar cuenta\" e ingresa tu correo y tu contraseña.");
-        System.out.print("\nPara confirmar, escribe " + PALABRA_CONFIRMACION
-                + " (cualquier otra cosa cancela): ");
-
+        System.out.print("\n¿Estás seguro de eliminar tu cuenta? (s/n): ");
         String respuesta = sc.nextLine().trim();
-        if (!respuesta.equals(PALABRA_CONFIRMACION)) {
+        if (!respuesta.equalsIgnoreCase("s")) {
             System.out.println("Eliminación cancelada. Tu cuenta sigue activa.");
             return false;
         }

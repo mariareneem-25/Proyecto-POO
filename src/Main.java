@@ -2,6 +2,7 @@
 import java.io.PrintStream;
 import java.text.Normalizer;
 import java.time.format.DateTimeFormatter;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Scanner;
 
@@ -37,7 +38,9 @@ public class Main {
         });
 
         ConexionDB.crearTablas();
-        Seguridad.migrarContrasenasAntiguas();
+        Perfil_usuario.registrarCorreo("estudiante1@uvg.edu.gt", "estudiante");
+        Perfil_usuario.registrarCorreo("director1@uvg.edu.gt", "director");
+        Perfil_usuario.registrarCorreo("docente1@uvg.edu.gt", "docente");
 
         iniciarMenu();
     }
@@ -45,12 +48,13 @@ public class Main {
     private static void iniciarMenu() {
         int opcion = -1;
 
-        while (opcion != 4) {
+        while (opcion != 5) {
             System.out.println("\n=== Menú ===");
-            System.out.println("1. Registrarse");
-            System.out.println("2. Iniciar sesión");
-            System.out.println("3. Reactivar cuenta");
-            System.out.println("4. Salir");
+            System.out.println("1. Agregar correo autorizado");
+            System.out.println("2. Registrarse");
+            System.out.println("3. Iniciar sesión");
+            System.out.println("4. Reactivar cuenta");
+            System.out.println("5. Salir");
             System.out.print("Selecciona una opción: ");
 
             if (sc.hasNextInt()) {
@@ -62,10 +66,12 @@ public class Main {
             sc.nextLine();
 
             if (opcion == 1) {
-                registrar();
+                agregarCorreoAutorizado();
             } else if (opcion == 2) {
-                iniciarSesion();
+                registrar();
             } else if (opcion == 3) {
+                iniciarSesion();
+            } else if (opcion == 4) {
                 new PerfilConsola(sc).reactivar();
             }
         }
@@ -83,27 +89,64 @@ public class Main {
         }
     }
 
-    
+    private static void agregarCorreoAutorizado() {
+        System.out.print("Correo a autorizar: ");
+        String correo = sc.nextLine();
+
+        System.out.println("Tipo de usuario (estudiante / docente / director): ");
+        String tipo = sc.nextLine();
+
+        if (Perfil_usuario.registrarCorreo(correo, tipo)) {
+            System.out.println("Correo autorizado correctamente.");
+        } else {
+            System.out.println("No se pudo autorizar el correo (puede que ya exista).");
+        }
+    }
 
     private static void registrar() {
         System.out.print("Nombre: ");
         String nombre = sc.nextLine();
+
         System.out.print("Correo institucional: ");
         String correo = sc.nextLine();
+
         System.out.print("Contraseña: ");
         String contrasena = sc.nextLine();
+
         System.out.print("Foto de perfil (ruta o nombre de archivo): ");
         String fotoPerfil = sc.nextLine();
+
         if (!Perfil_usuario.verificarCorreo(correo)) {
-            System.out.println("Registro rechazado: utiliza un correo @uvg.edu.gt que no esté registrado.");
+            System.out.println("Registro rechazado: el correo no pertenece al dominio institucional, "
+                    + "no está autorizado o ya fue utilizado para crear una cuenta.");
             return;
         }
-        if (!Seguridad.contrasenaValida(contrasena)) {
-            System.out.println(Seguridad.requisitosContrasena());
+
+        String tipoTexto = Perfil_usuario.obtenerTipoUsuario(correo);
+        if (tipoTexto == null) {
+            System.out.println("Registro rechazado: no se encontró el tipo de usuario para este correo.");
             return;
         }
-        Perfil_usuario.TipoUsuario tipo = Perfil_usuario.seleccionarRolEstudiante(sc);
-        Perfil_usuario usuario = Perfil_usuario.crearUsuario(nombre, correo, contrasena, fotoPerfil, tipo);
+
+        Perfil_usuario.TipoUsuario tipo;
+        switch (tipoTexto.toLowerCase()) {
+            case "estudiante":
+                // si es estudiante, crearUsuario pregunta una sola vez si se registra como estudiante o tutor 
+                tipo = Perfil_usuario.TipoUsuario.ESTUDIANTE;       
+                break;
+            case "director":
+                tipo = Perfil_usuario.TipoUsuario.DIRECTOR;
+                break;
+            case "docente":
+                tipo = Perfil_usuario.TipoUsuario.DOCENTE;
+                break;
+            default:
+                System.out.println("Registro rechazado: tipo de usuario no reconocido.");
+                return;
+        }
+
+        Perfil_usuario usuario = Perfil_usuario.crearUsuario(nombre, correo, contrasena, fotoPerfil);
+
         if (usuario != null) {
             System.out.println("Cuenta creada correctamente:");
             System.out.println(usuario);
@@ -112,7 +155,26 @@ public class Main {
         }
     }
 
-    
+    private static Perfil_usuario.TipoUsuario seleccionarRolEstudiante() {
+        int opcion = -1;
+
+        while (opcion != 1 && opcion != 2) {
+            System.out.println("Tu correo corresponde a un estudiante. ¿Cómo deseas registrarte?");
+            System.out.println("1. Estudiante (solicita tutorías)");
+            System.out.println("2. Tutor (brinda tutorías)");
+            System.out.print("Selecciona una opción: ");
+
+            if (sc.hasNextInt()) {
+                opcion = sc.nextInt();
+            } else {
+                sc.next();
+                continue;
+            }
+            sc.nextLine();
+        }
+
+        return (opcion == 2) ? Perfil_usuario.TipoUsuario.TUTOR : Perfil_usuario.TipoUsuario.ESTUDIANTE;
+    }
 
     private static void iniciarSesion() {
         System.out.print("Correo: ");
@@ -171,7 +233,10 @@ public class Main {
 
             switch (menu.get(subopcion - 1)) {
                 case MenuPrincipal.ACTUALIZAR_PERFIL:
-                    actualizarPerfil(sesion);
+                    // si cambia de rol, la sesion termina y vuelve a iniciar sesion
+                    if (new PerfilConsola(sc).actualizar(sesion)) {
+                        salir = true;
+                    }
                     break;
                 case MenuPrincipal.ELIMINAR_PERFIL:
                     // si la persona cancela, sigue en el menu
@@ -182,14 +247,23 @@ public class Main {
                 case MenuPrincipal.FORO:
                     menuForo(usuarioActual);
                     break;
+                case MenuPrincipal.BUSCAR_TUTORES:
+                    new TutoriaConsola(sc, servicioChat).buscarTutores(sesion);
+                    break;
+                case MenuPrincipal.MIS_SOLICITUDES:
+                    new TutoriaConsola(sc, servicioChat).misSolicitudesYLogros(sesion);
+                    break;
+                case MenuPrincipal.SOLICITUDES_ESTUDIANTES:
+                    new TutoriaConsola(sc, servicioChat).solicitudesDeEstudiantes(sesion);
+                    break;
                 case MenuPrincipal.CHAT:
-                    menuChat(usuarioActual, sesion);
+                    new ChatConsola(sc, servicioChat).abrir(usuarioActual, sesion);
                     break;
                 case MenuPrincipal.SOLICITUDES:
                     menuSolicitudes(sesion);
                     break;
                 case MenuPrincipal.CALENDARIO:
-                    verCalendario(sesion);
+                    new CalendarioConsola(sc).ver(sesion);
                     break;
                 case MenuPrincipal.CERRAR_SESION:
                     salir = true;
@@ -280,31 +354,6 @@ public class Main {
     // ---------------------------------------------------------------
     // Chat estudiante - tutor
     // ---------------------------------------------------------------
-
-    private static void menuChat(Usuario usuario, Perfil_usuario sesion) {
-        if (usuario == null || usuario instanceof Docente) {
-            System.out.println("Tu tipo de cuenta todavía no puede usar el chat.");
-            return;
-        }
-
-        int opcion = -1;
-        while (opcion != 4) {
-            System.out.println("\n--- Chat ---");
-            System.out.println("1. Mis conversaciones");
-            System.out.println("2. Nueva conversación");
-            System.out.println("3. Chats de tutoría (solicitudes aceptadas y calendario)");
-            System.out.println("4. Volver");
-            opcion = leerEntero("Selecciona una opción: ");
-
-            if (opcion == 1) {
-                verConversaciones(usuario);
-            } else if (opcion == 2) {
-                nuevaConversacion(usuario);
-            } else if (opcion == 3) {
-                menuChatTutoria(sesion);
-            }
-        }
-    }
 
     private static void verConversaciones(Usuario usuario) {
         List<Conversacion> conversaciones;
@@ -569,7 +618,7 @@ public class Main {
     private static void menuSolicitudesTutor(Perfil_usuario sesion) {
         int opcion = -1;
 
-        while (opcion != 4) {
+        while (opcion != 5) {
             System.out.println("\n--- Solicitudes de tutoría (tutor) ---");
             System.out.println("1. Ver solicitudes pendientes");
             System.out.println("2. Consultar una solicitud");
@@ -636,38 +685,6 @@ public class Main {
             System.out.println("Solicitud rechazada.");
         } catch (IllegalArgumentException | IllegalStateException e) {
             System.out.println("No se pudo rechazar la solicitud: " + e.getMessage());
-        }
-    }
-
-    private static void menuChatTutoria(Perfil_usuario sesion) {
-        if (!acceso.puedeUsarChat(sesion)) {
-            System.out.println("Tu tipo de cuenta no puede usar el chat privado.");
-            return;
-        }
-
-        int opcion = -1;
-
-        while (opcion != 6) {
-            System.out.println("\n--- Chat de tutoría ---");
-            System.out.println("1. Ver mis chats");
-            System.out.println("2. Ver mensajes de un chat");
-            System.out.println("3. Enviar mensaje");
-            System.out.println("4. Proponer fecha de tutoría");
-            System.out.println("5. Ver y responder propuestas de fecha");
-            System.out.println("6. Volver");
-            opcion = leerEntero("Selecciona una opción: ");
-
-            if (opcion == 1) {
-                verChats(sesion);
-            } else if (opcion == 2) {
-                verMensajes(sesion);
-            } else if (opcion == 3) {
-                enviarMensaje(sesion);
-            } else if (opcion == 4) {
-                proponerFecha(sesion);
-            } else if (opcion == 5) {
-                responderPropuestas(sesion);
-            }
         }
     }
 
@@ -755,23 +772,6 @@ public class Main {
             System.out.println("Respuesta enviada por el chat.");
         } catch (IllegalArgumentException | IllegalStateException e) {
             System.out.println("No se pudo responder la propuesta: " + e.getMessage());
-        }
-    }
-
-    private static void verCalendario(Perfil_usuario sesion) {
-        try {
-            List<PropuestaFecha> reservadas = calendario.verCalendario(sesion);
-
-            System.out.println("\n--- Calendario: fechas reservadas ---");
-            if (reservadas.isEmpty()) {
-                System.out.println("No tienes fechas reservadas.");
-            }
-
-            for (PropuestaFecha reserva : reservadas) {
-                System.out.println(reserva.descripcionReserva());
-            }
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            System.out.println(e.getMessage());
         }
     }
 }

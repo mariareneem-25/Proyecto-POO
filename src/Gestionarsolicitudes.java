@@ -18,7 +18,7 @@ public class Gestionarsolicitudes {
         }
 
         List<String> tutores = new ArrayList<>();
-        String sql = "SELECT idUsuario, nombre FROM usuarios WHERE tipoUsuario = 'TUTOR' AND estadoCuenta = 'ACTIVA' AND EXISTS (SELECT 1 FROM solicitudes_tutor st WHERE st.idTutor = usuarios.idUsuario AND st.estado = 'APROBADO')";
+        String sql = "SELECT idUsuario, nombre FROM usuarios WHERE tipoUsuario = 'TUTOR' AND estadoCuenta = 'ACTIVA'";
 
         try (Connection conexion = ConexionDB.conectar();
              PreparedStatement ps = conexion.prepareStatement(sql);
@@ -49,7 +49,7 @@ public class Gestionarsolicitudes {
         }
 
         if (!ConexionDB.existe("SELECT 1 FROM usuarios WHERE idUsuario = ? AND tipoUsuario = 'TUTOR' "
-                + "AND estadoCuenta = 'ACTIVA' AND EXISTS (SELECT 1 FROM solicitudes_tutor st WHERE st.idTutor = usuarios.idUsuario AND st.estado = 'APROBADO')", idTutor)) {
+                + "AND estadoCuenta = 'ACTIVA'", idTutor)) {
             throw new IllegalArgumentException("El tutor indicado no existe.");
         }
 
@@ -131,14 +131,8 @@ public class Gestionarsolicitudes {
             texto.append(logro).append("\n");
         }
 
-        texto.append("\n--- Calendario (fechas reservadas) ---\n");
-        List<PropuestaFecha> reservadas = calendario.obtenerReservadas(tutor, idEstudiante);
-        if (reservadas.isEmpty()) {
-            texto.append("El estudiante no tiene fechas reservadas.\n");
-        }
-        for (PropuestaFecha reserva : reservadas) {
-            texto.append(reserva.descripcionReserva()).append("\n");
-        }
+        texto.append("\n--- Calendario del estudiante ---\n");
+        texto.append(new CalendarioDAO().resumen(idEstudiante, false));
 
         return texto.toString();
     }

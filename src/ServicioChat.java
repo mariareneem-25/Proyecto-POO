@@ -88,7 +88,9 @@ public class ServicioChat {
     // PENDIENTE: verificar que el estudiante y el tutor ya tengan una tutoría agendada.
     // Cuando exista el módulo de agendamiento, consultar aquí y devolver false si no hay una.
     protected boolean estanAgendados(Estudiante estudiante, Tutor tutor) {
-        return true;
+        return ConexionDB.existe(
+                "SELECT 1 FROM solicitudes WHERE idEstudiante = ? AND idTutor = ? AND estado = 'APROBADO'",
+                Integer.parseInt(estudiante.getIdUsuario()), Integer.parseInt(tutor.getIdUsuario()));
     }
 
     // PENDIENTE: cuando exista el flujo de aprobación de tutores, bloquear a los no aprobados:
