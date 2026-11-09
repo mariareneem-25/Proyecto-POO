@@ -67,6 +67,13 @@ public class ConexionDB {
                 "idUsuario INTEGER NOT NULL, " +
                 "tema TEXT NOT NULL, " +
                 "completado INTEGER NOT NULL)";
+     
+      String sqlCalendarioPersonal = "CREATE TABLE IF NOT EXISTS calendario_personal (" +
+         "idCalendario INTEGER PRIMARY KEY AUTOINCREMENT, " +
+         "idUsuario INTEGER NOT NULL, " +
+         "fechaHora TEXT NOT NULL, " +
+         "tipo TEXT NOT NULL, " +
+         "FOREIGN KEY (idUsuario) REFERENCES usuarios(idUsuario))";
 
         try (Connection conexion = conectar();
              Statement st = conexion.createStatement()) {
@@ -78,6 +85,7 @@ public class ConexionDB {
             st.execute(sqlMensajes);
             st.execute(sqlPropuestas);
             st.execute(sqlLogros);
+            st.execute(sqlCalendarioPersonal);
         
         try { 
           st.execute("ALTER TABLE usuarios ADD COLUMN descripcion TEXT");
